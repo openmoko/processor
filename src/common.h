@@ -290,5 +290,25 @@ struct processor_context {
     int fill;
 };
 
+struct processor_renderer_functions {
+    int (*stroke) (float r, float g, float b, float a);
+    int (*background) (float r, float g, float b, float a);
+    int (*push_matrix) (void);
+    int (*pop_matrix) (void);
+    int (*translate) (float x, float y, float z);
+    int (*rotate) (float angle, float x, float y, float z);
+    int (*scale) (float x, float y, float z);
+    int (*begin_shape) (int mode);
+    int (*vertex) (float x, float y, float z, float u, float v);
+    int (*end_shape) (int end_mode);
+    int (*fill) (float r, float g, float b, float a);
+};
+
+struct processor_toolkit_functions {
+    int (*size) (int width, int height);
+    int (*pre_setup) (void);
+    int (*post_setup) (void);
+};
+
 
 #endif				/* COMMON_H */
