@@ -1,16 +1,7 @@
+#include <errno.h>
 #include <GL/glut.h>
 
-/* NOTE: Does NOT support keyPressed(), keyReleased() */
-struct processor_context {
-    void (*update_key)(int key);
-    void (*update_mouse)(int x, int y, int button);
-    void (*mouse_dragged)(void);
-    void (*mouse_moved)(void);
-    void (*mouse_released)(void);
-    void (*mouse_pressed)(void);
-    void (*mouse_clicked)(void);
-    void (*draw)(void);
-};
+#include "common.h"
 
 static struct processor_context *psr_context = NULL;
 
@@ -49,7 +40,6 @@ static void special(int key, int x, int y)
 	psr_context->update_key(CODED, RIGHT);
 	break;
     case GLUT_KEY_F1:
-    case GLUT_KEY_F1:
     case GLUT_KEY_F2:
     case GLUT_KEY_F3:
     case GLUT_KEY_F4:
@@ -66,16 +56,16 @@ static void special(int key, int x, int y)
     case GLUT_KEY_HOME:
     case GLUT_KEY_END:
     case GLUT_KEY_INSERT:
-    default:
 	break;
+    default:
+	psr_system_error(EINVAL, "invalid 'key' argument.");
     }
     return;
 }
 
 static void mouse(int button, int state, int x, int y)
 {
-    switch (button)
-    {
+    switch (button) {
     case GLUT_LEFT_BUTTON:
 	button = LEFT;
 	break;
@@ -86,7 +76,7 @@ static void mouse(int button, int state, int x, int y)
 	button = RIGHT;
 	break;
     default:
-	break;
+	psr_system_error(EINVAL, "invalid 'button' argument.");
     }
     psr_context->update_mouse(x, y, button);
     if (state == GLUT_DOWN) {
@@ -99,13 +89,13 @@ static void mouse(int button, int state, int x, int y)
 
 static void motion(int x, int y)
 {
-    psr_context->update_mouse(x, y, -1); /* don't update button */
+    psr_context->update_mouse(x, y, -1);	/* don't update button */
     psr_context->mouse_dragged();
 }
 
 static void passive_motion(int x, int y)
 {
-    psr_context->update_mouse(x, y, -1); /* don't update button */
+    psr_context->update_mouse(x, y, -1);	/* don't update button */
     psr_context->mouse_moved();
 }
 
@@ -122,10 +112,13 @@ int size(int width, int height)
     return 0;
 }
 
-int pre_setup(struct *glut_context)
+int pre_setup(void)
 {
+    int argc = 1;
+    char *argv[] = {"processor"};
+
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_RGBA, GLUT_DEPTH, GLUT_DOUBLE);
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
     glutKeyboardFunc(keyboard);
     glutSpecialFunc(special);
     glutMouseFunc(mouse);
@@ -135,7 +128,7 @@ int pre_setup(struct *glut_context)
     return 0;
 }
 
-int post_setup(struct *glut_context)
+int post_setup(void)
 {
-     return 0;
+    return 0;
 }
