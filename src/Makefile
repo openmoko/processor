@@ -1,5 +1,5 @@
 CFLAGS = -g -Wall -fPIC -I.
-TARGETS = libprocessing.so RGBCube
+TARGETS = libprocessing.so RGBCube RGBCube_glut
 
 
 .PHONY: all
@@ -10,6 +10,9 @@ libprocessing.so: main.o
 
 RGBCube: RGBCube.o
 	${CC} ${CFLAGS} -L. -lprocessing -o $@ $^
+
+RGBCube_glut: RGBCube_glut.o
+	${CC} ${CFLAGS} -lGL -lGLU -lglut -o $@ $^
 
 .PHONY: clean
 clean:

@@ -32,10 +32,10 @@ static inline int glCheckError(void)
 {
     GLenum e;
     int r = 0;
-    e = glGetError();
-    while (e != GL_NO_ERROR) {
+    psr_debug("glCheckError");
+    while ((e = glGetError()) != GL_NO_ERROR) {
 	r = 1;
-	psr_error("%s\n", gluErrorString(e));
+	psr_error("%s", gluErrorString(e));
     }
     return r;
 }
@@ -95,35 +95,27 @@ static int begin_shape(int mode)
     switch (mode) {
     case POINTS:
 	mode = GL_POINTS;
-	glColor4f(stroke_color.r, stroke_color.g, stroke_color.b, stroke_color.a);
 	break;
     case LINES:
 	mode = GL_LINES;
-	glColor4f(stroke_color.r, stroke_color.g, stroke_color.b, stroke_color.a);
 	break;
     case TRIANGLES:
 	mode = GL_TRIANGLES;
-	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
 	break;
     case TRIANGLE_FAN:
 	mode = GL_TRIANGLE_FAN;
-	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
 	break;
     case TRIANGLE_STRIP:
 	mode = GL_TRIANGLE_STRIP;
-	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
 	break;
     case QUADS:
 	mode = GL_QUADS;
-	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
 	break;
     case QUAD_STRIP:
 	mode = GL_QUAD_STRIP;
-	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
 	break;
     case POLYGON:
 	mode = GL_POLYGON;
-	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
 	break;
     default:
 	psr_system_error(EINVAL, "invalid 'mode' argument.");
@@ -163,6 +155,7 @@ static int end_shape(int end_mode)
 
     glEnd();
     if (!psr_cxt->stroke) {
+	psr_debug("no stroke, don't draw edges.");
 	goto exit;
     }
 
@@ -190,7 +183,6 @@ static int end_shape(int end_mode)
 	break;
     }
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glColor4f(stroke_color.r, stroke_color.g, stroke_color.b, stroke_color.a);
     glBegin(mode);
     llist_for_each_entry_safe(pos, n, &vertex_list_head, list) {
 	glVertex3f(pos->x, pos->y, pos->z);
@@ -208,7 +200,8 @@ static int fill(float r, float g, float b, float a)
     fill_color.g = g;
     fill_color.b = b;
     fill_color.a = a;
-    return 0;
+    glColor4f(r, g, b, a);
+    return glCheckError();
 }
 
 int gl_init(struct psr_context *lpsr_cxt,

@@ -172,7 +172,7 @@ int end_shape(int end_mode)
 
 int fill(float r, float g, float b, float a)
 {
-    psr_debug("fill(%f, %f, %f, %f", r, g, b, a);
+    psr_debug("fill(%f, %f, %f, %f)", r, g, b, a);
     psr_context.fill = 1;
     return renderer_context.fill(r, g, b, a);
 }
