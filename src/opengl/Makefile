@@ -1,8 +1,12 @@
-CFLAGS = -g
-LDFLAGS = -lGL -lGLU -lglut
+CFLAGS = -g -I../ -fPIC -Wall
+TARGETS = libpsr_gl.so
 
-RGBCube: RGBCube.o gl.o glut.o
+.PHONY: all
+all: ${TARGETS}
+
+libpsr_gl.so: gl.o glut.o
+	${CC} -shared -lGL -lGLU -lglut -o $@ $^
 
 .PHONY: clean
 clean:
-	rm -rf *.o ${TARGETS}
+	rm -f *.o ${TARGETS}

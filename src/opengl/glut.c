@@ -3,7 +3,47 @@
 
 #include "common.h"
 
-static struct processor_context *psr_context = NULL;
+static struct psr_context *psr_cxt = NULL;
+static struct psr_renderer_context *renderer_cxt = NULL;
+
+extern int gl_init(struct psr_context *psr_cxt,
+		   struct psr_renderer_context *renderer_cxt);
+
+static void display_draw(void)
+{
+    psr_debug("display_draw");
+    psr_cxt->draw();
+    glFlush();
+    glutSwapBuffers();
+}
+
+static void display_setup(void)
+{
+    psr_debug("display_setup");
+    psr_cxt->setup();
+    glFlush();
+    glutSwapBuffers();
+    if (psr_cxt->draw) {
+	glutDisplayFunc(display_draw);
+    }
+}
+
+static void idle(void)
+{
+    if (psr_cxt->draw) {
+	glutPostRedisplay();
+    }
+}
+
+static void visible(int vis)
+{
+    psr_debug("visible");
+    if (vis == GLUT_VISIBLE) {
+	glutIdleFunc(idle);
+    } else {
+	glutIdleFunc(NULL);
+    }
+}
 
 static void keyboard(unsigned char key, int x, int y)
 {
@@ -19,7 +59,7 @@ static void keyboard(unsigned char key, int x, int y)
     default:
 	break;
     }
-    psr_context->update_key(key, keycode);
+    psr_cxt->update_key(key, keycode);
     return;
 }
 
@@ -28,16 +68,16 @@ static void special(int key, int x, int y)
 {
     switch (key) {
     case GLUT_KEY_UP:
-	psr_context->update_key(CODED, UP);
+	psr_cxt->update_key(CODED, UP);
 	break;
     case GLUT_KEY_DOWN:
-	psr_context->update_key(CODED, DOWN);
+	psr_cxt->update_key(CODED, DOWN);
 	break;
     case GLUT_KEY_LEFT:
-	psr_context->update_key(CODED, LEFT);
+	psr_cxt->update_key(CODED, LEFT);
 	break;
     case GLUT_KEY_RIGHT:
-	psr_context->update_key(CODED, RIGHT);
+	psr_cxt->update_key(CODED, RIGHT);
 	break;
     case GLUT_KEY_F1:
     case GLUT_KEY_F2:
@@ -78,57 +118,65 @@ static void mouse(int button, int state, int x, int y)
     default:
 	psr_system_error(EINVAL, "invalid 'button' argument.");
     }
-    psr_context->update_mouse(x, y, button);
+    psr_cxt->update_mouse(x, y, button);
     if (state == GLUT_DOWN) {
-	psr_context->mouse_pressed();
+	psr_cxt->mouse_pressed();
     } else if (state == GLUT_UP) {
-	psr_context->mouse_released();
-	psr_context->mouse_clicked();
+	psr_cxt->mouse_released();
+	psr_cxt->mouse_clicked();
     }
 }
 
 static void motion(int x, int y)
 {
-    psr_context->update_mouse(x, y, -1);	/* don't update button */
-    psr_context->mouse_dragged();
+    psr_cxt->update_mouse(x, y, -1);	/* don't update button */
+    psr_cxt->mouse_dragged();
 }
 
 static void passive_motion(int x, int y)
 {
-    psr_context->update_mouse(x, y, -1);	/* don't update button */
-    psr_context->mouse_moved();
+    psr_cxt->update_mouse(x, y, -1);	/* don't update button */
+    psr_cxt->mouse_moved();
 }
 
-int init(struct processor_context *context)
+static int size(int width, int height)
 {
-    psr_context = context;
+    glutReshapeWindow(width, height);
     return 0;
 }
 
-int size(int width, int height)
+int init(struct psr_context *lpsr_cxt,
+	 struct psr_renderer_context *lrenderer_cxt)
 {
-    glutInitWindowPosition(0, 0);
-    glutInitWindowSize(width, height);
+    psr_cxt = lpsr_cxt;
+    renderer_cxt = lrenderer_cxt;
+    renderer_cxt->size = size;
     return 0;
 }
 
-int pre_setup(void)
+int main_loop_start(void)
 {
     int argc = 1;
-    char *argv[] = {"processor"};
+    char *argv[] = { "Processor" };
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
+
+    glutInitWindowSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    glutCreateWindow("Processor");
+    gl_init(psr_cxt, renderer_cxt);
+
+    glutDisplayFunc(display_setup);
+    /* FIXME: implement this */
+    //glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
     glutSpecialFunc(special);
     glutMouseFunc(mouse);
     glutMotionFunc(motion);
     glutPassiveMotionFunc(passive_motion);
-    glutCreateWindow("Processor");
-    return 0;
-}
+    glutVisibilityFunc(visible);
 
-int post_setup(void)
-{
+    psr_cxt->default_setup();
+    glutMainLoop();
     return 0;
 }
