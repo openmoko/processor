@@ -16,7 +16,7 @@ extern volatile int debug_level;
     } while(0);
 
 #define psr_error(fmt...)					\
-    if (debug_level & (1 << 3)) {				\
+    if (debug_level & 1 << 3) {					\
 	fprintf(stderr, "ERROR:%s:%d:", __FILE__, __LINE__);	\
 	fprintf(stderr, ##fmt);					\
 	fputs("\n", stderr);					\
@@ -24,21 +24,21 @@ extern volatile int debug_level;
     }
 
 #define psr_warn(fmt...)					\
-    if (debug_level & (1 << 2)) {				\
+    if (debug_level & 1 << 2) {					\
 	fprintf(stderr, "WARN:%s:%d:", __FILE__, __LINE__);	\
 	fprintf(stderr, ##fmt);					\
 	fputs("\n", stderr);					\
     }
 
 #define psr_note(fmt...)					\
-    if (debug_level & (1 << 1)) {				\
+    if (debug_level & 1 << 1) {					\
 	fprintf(stderr, "NOTE:%s:%d:", __FILE__, __LINE__);	\
 	fprintf(stderr, ##fmt);					\
 	fputs("\n", stderr);					\
     }
 
 #define psr_debug(fmt...)					\
-    if (debug_level & (1 << 0)) {				\
+    if (debug_level & 1 << 0) {					\
 	fprintf(stderr, "DEBUG:%s:%d:", __FILE__, __LINE__);	\
 	fprintf(stderr, ##fmt);					\
 	fputs("\n", stderr);					\
@@ -57,6 +57,8 @@ struct psr_context {
     void (*mouse_released) (void);
     void (*mouse_pressed) (void);
     void (*mouse_clicked) (void);
+
+    void (*update_size) (int width, int height);
 
     void (*default_setup) (void);
     void (*setup) (void);

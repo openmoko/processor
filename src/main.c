@@ -71,6 +71,12 @@ static void update_mouse(int x, int y, int button)
     }
 }
 
+static void update_size(int lwidth, int lheight)
+{
+    width = lwidth;
+    height = lheight;
+}
+
 static void null_stub(void)
 {
     return;
@@ -208,6 +214,8 @@ int processor_init(void)
     psr_context.mouse_released = null_stub;
     psr_context.mouse_pressed = null_stub;
     psr_context.mouse_clicked = null_stub;
+
+    psr_context.update_size = update_size;
 
     psr_context.default_setup = default_setup;
     psr_context.setup = NULL;

@@ -30,6 +30,7 @@ static void display_setup(void)
 
 static void reshape(int width, int height)
 {
+    psr_cxt->update_size(width, height);
     gl_reshape(width, height);
 }
 
