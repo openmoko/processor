@@ -26,7 +26,7 @@ static struct color_internal stroke_color, fill_color;
 
 static LLIST_HEAD(vertex_list_head);
 
-static int current_mode = -1;
+static int glmode = -1;
 
 static inline int glCheckError(void)
 {
@@ -35,7 +35,7 @@ static inline int glCheckError(void)
     psr_debug("glCheckError");
     while ((e = glGetError()) != GL_NO_ERROR) {
 	r = 1;
-	psr_error("%s", gluErrorString(e));
+	psr_warn("%s", gluErrorString(e));
     }
     return r;
 }
@@ -76,7 +76,7 @@ static int translate(float x, float y, float z)
 
 static int rotate(float angle, float x, float y, float z)
 {
-    glRotatef(angle, x, y, z);
+    glRotatef(angle * 180 / M_PI, x, y, z);
     return glCheckError();
 }
 
@@ -94,35 +94,34 @@ static int begin_shape(int mode)
 {
     switch (mode) {
     case POINTS:
-	mode = GL_POINTS;
+	glmode = GL_POINTS;
 	break;
     case LINES:
-	mode = GL_LINES;
+	glmode = GL_LINES;
 	break;
     case TRIANGLES:
-	mode = GL_TRIANGLES;
+	glmode = GL_TRIANGLES;
 	break;
     case TRIANGLE_FAN:
-	mode = GL_TRIANGLE_FAN;
+	glmode = GL_TRIANGLE_FAN;
 	break;
     case TRIANGLE_STRIP:
-	mode = GL_TRIANGLE_STRIP;
+	glmode = GL_TRIANGLE_STRIP;
 	break;
     case QUADS:
-	mode = GL_QUADS;
+	glmode = GL_QUADS;
 	break;
     case QUAD_STRIP:
-	mode = GL_QUAD_STRIP;
+	glmode = GL_QUAD_STRIP;
 	break;
     case POLYGON:
-	mode = GL_POLYGON;
+	glmode = GL_POLYGON;
 	break;
     default:
 	psr_system_error(EINVAL, "invalid 'mode' argument.");
     }
-    current_mode = mode;
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glBegin(mode);
+    glBegin(glmode);
     return glCheckError();
 }
 
@@ -150,16 +149,16 @@ static int vertex(float x, float y, float z, float u, float v)
 
 static int end_shape(int end_mode)
 {
-    int mode = current_mode;
     struct vertex *pos, *n;
 
     glEnd();
     if (!psr_cxt->stroke) {
+	/* FIXME: does not free */
 	psr_debug("no stroke, don't draw edges.");
 	goto exit;
     }
 
-    switch (mode) {
+    switch (glmode) {
     case GL_POINTS:
     case GL_LINES:
 	/* don't need to draw the edge.  already did. */
@@ -174,16 +173,16 @@ static int end_shape(int end_mode)
     case GL_POLYGON:
 	/* depends on CLOSE or not */
 	if (end_mode == CLOSE) {
-	    mode = GL_LINE_STRIP;
+	    glmode = GL_LINE_STRIP;
 	} else {
-	    mode = GL_LINE_LOOP;
+	    glmode = GL_LINE_LOOP;
 	}
 	break;
     default:
 	break;
     }
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glBegin(mode);
+    glBegin(glmode);
     llist_for_each_entry_safe(pos, n, &vertex_list_head, list) {
 	glVertex3f(pos->x, pos->y, pos->z);
 	free(pos);
@@ -208,9 +207,14 @@ int gl_init(struct psr_context *lpsr_cxt,
 	    struct psr_renderer_context *renderer_cxt)
 {
     int r = 0;
+    glShadeModel(GL_SMOOTH);
+    glClearColor(1, 1, 1, 1);
+    glClearDepth(1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
-    glScalef(1, -1, 1);		/* flip y-axis to match with the processing
-				 * coordinate */
+    glDepthFunc(GL_LEQUAL);
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+    glFlush();
     r = glCheckError();
 
     psr_cxt = lpsr_cxt;
@@ -227,4 +231,17 @@ int gl_init(struct psr_context *lpsr_cxt,
     renderer_cxt->fill = fill;
 
     return r;
+}
+
+int gl_reshape(int width, int height)
+{
+    glViewport(0, 0, width, height);    /* Reset The Current Viewport And Perspective Transformation */
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    /* flip y-axis to match with the processing coordinate */
+    glScalef(1, -1, 1);
+    return glCheckError();
 }

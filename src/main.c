@@ -6,6 +6,8 @@
 struct psr_context psr_context;
 struct psr_renderer_context renderer_context;
 
+volatile int debug_level = 16 - 1;
+
 volatile char key;
 volatile int keycode;
 volatile int mouse_x;

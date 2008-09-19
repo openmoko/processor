@@ -9,35 +9,40 @@
 #include <stdio.h>
 #include <error.h>
 
+extern volatile int debug_level;
+
 #define psr_system_error(e, fmt...) do {			\
 	error_at_line(1, (e), __FILE__, __LINE__, ##fmt);	\
     } while(0);
 
-#define psr_error(fmt...) do {					\
+#define psr_error(fmt...)					\
+    if (debug_level & (1 << 3)) {				\
 	fprintf(stderr, "ERROR:%s:%d:", __FILE__, __LINE__);	\
 	fprintf(stderr, ##fmt);					\
 	fputs("\n", stderr);					\
 	exit(1);						\
-    } while(0);
+    }
 
-#define psr_warn(fmt...) do {					\
+#define psr_warn(fmt...)					\
+    if (debug_level & (1 << 2)) {				\
 	fprintf(stderr, "WARN:%s:%d:", __FILE__, __LINE__);	\
 	fprintf(stderr, ##fmt);					\
 	fputs("\n", stderr);					\
-    } while(0);
+    }
 
-#define psr_note(fmt...) do {					\
+#define psr_note(fmt...)					\
+    if (debug_level & (1 << 1)) {				\
 	fprintf(stderr, "NOTE:%s:%d:", __FILE__, __LINE__);	\
 	fprintf(stderr, ##fmt);					\
 	fputs("\n", stderr);					\
-    } while(0);
+    }
 
-#define psr_debug(fmt...) do {					\
+#define psr_debug(fmt...)					\
+    if (debug_level & (1 << 0)) {				\
 	fprintf(stderr, "DEBUG:%s:%d:", __FILE__, __LINE__);	\
 	fprintf(stderr, ##fmt);					\
 	fputs("\n", stderr);					\
-    } while(0);
-
+    }
 
 
 struct psr_context {

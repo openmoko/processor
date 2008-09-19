@@ -9,11 +9,12 @@ static struct psr_renderer_context *renderer_cxt = NULL;
 extern int gl_init(struct psr_context *psr_cxt,
 		   struct psr_renderer_context *renderer_cxt);
 
+extern int gl_reshape(int width, int height);
+
 static void display_draw(void)
 {
     psr_debug("display_draw");
     psr_cxt->draw();
-    glFlush();
     glutSwapBuffers();
 }
 
@@ -21,11 +22,15 @@ static void display_setup(void)
 {
     psr_debug("display_setup");
     psr_cxt->setup();
-    glFlush();
     glutSwapBuffers();
     if (psr_cxt->draw) {
 	glutDisplayFunc(display_draw);
     }
+}
+
+static void reshape(int width, int height)
+{
+    gl_reshape(width, height);
 }
 
 static void idle(void)
@@ -168,7 +173,7 @@ int main_loop_start(void)
 
     glutDisplayFunc(display_setup);
     /* FIXME: implement this */
-    //glutReshapeFunc(reshape);
+    glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
     glutSpecialFunc(special);
     glutMouseFunc(mouse);

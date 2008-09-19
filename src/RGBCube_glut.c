@@ -21,8 +21,8 @@ static void draw(void)
     //glTranslatef(width / 2, height / 2, -30);
     glTranslatef(0, 0, -6.0);
 
-    newXmag = (float)mouse_x / (float)width * 2 * M_PI;
-    newYmag = (float)mouse_y / (float)height * 2 * M_PI;
+    newXmag = (float) mouse_x / (float) width * 2 * M_PI;
+    newYmag = (float) mouse_y / (float) height * 2 * M_PI;
 
     diff = xmag - newXmag;
     if (fabs(diff) > 0.01) {
@@ -36,8 +36,8 @@ static void draw(void)
 
     printf("%d, %d, %f, %f, %f, %f\n",
 	   mouse_x, mouse_y, xmag, ymag, newXmag, newYmag);
-    glRotatef(-ymag / M_PI * 180 , 1.0, 0, 0);
-    glRotatef(-xmag / M_PI * 180 , 0, 1.0, 0);
+    glRotatef(-ymag / M_PI * 180, 1.0, 0, 0);
+    glRotatef(-xmag / M_PI * 180, 0, 1.0, 0);
 
     //glScalef(50, 50, 50);
     glBegin(GL_QUADS);
@@ -68,7 +68,7 @@ static void draw(void)
     glVertex3f(-1, -1, -1);
     glColor4f(1, 0, 0, 1);
     glVertex3f(1, -1, -1);
- 
+
     glColor4f(0, 1, 0, 1);
     glVertex3f(-1, 1, -1);
     glColor4f(0, 1, 1, 1);
@@ -110,10 +110,11 @@ static void draw(void)
 
 static void reshape(int width, int height)
 {
-    glViewport(0, 0, width, height);    /* Reset The Current Viewport And Perspective Transformation */
+    glViewport(0, 0, width, height);	/* Reset The Current Viewport And Perspective Transformation */
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
+    gluPerspective(45.0f, (GLfloat) width / (GLfloat) height, 0.1f,
+		   100.0f);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glScalef(1, -1, 1);
@@ -142,7 +143,6 @@ static void passive_motion(int x, int y)
 static void init(void)
 {
     glShadeModel(GL_SMOOTH);
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClearDepth(1.0f);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
