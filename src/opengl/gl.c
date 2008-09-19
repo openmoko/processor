@@ -92,6 +92,7 @@ static int scale(float x, float y, float z)
 
 static int begin_shape(int mode)
 {
+    int r;
     switch (mode) {
     case POINTS:
 	glmode = GL_POINTS;
@@ -121,8 +122,10 @@ static int begin_shape(int mode)
 	psr_system_error(EINVAL, "invalid 'mode' argument.");
     }
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    r = glCheckError();
+    /* well, don't call glGetError before glEnd */
     glBegin(glmode);
-    return glCheckError();
+    return r;
 }
 
 /** don't care about texture yet. */
@@ -144,7 +147,7 @@ static int vertex(float x, float y, float z, float u, float v)
     }
 
     glVertex3f(x, y, z);
-    return glCheckError();
+    return 0;
 }
 
 static int end_shape(int end_mode)
@@ -189,7 +192,7 @@ static int end_shape(int end_mode)
     }
     glEnd();
 
-  exit:
+exit:
     return glCheckError();
 }
 
@@ -200,7 +203,7 @@ static int fill(float r, float g, float b, float a)
     fill_color.b = b;
     fill_color.a = a;
     glColor4f(r, g, b, a);
-    return glCheckError();
+    return 0;
 }
 
 int gl_init(struct psr_context *lpsr_cxt,
