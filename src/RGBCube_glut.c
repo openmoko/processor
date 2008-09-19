@@ -15,27 +15,29 @@ static void draw(void)
 
     glClearColor(0.5, 0.5, 0.45, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glLoadIdentity();
-//    glPushMatrix();
+
+    glPushMatrix();
 
     //glTranslatef(width / 2, height / 2, -30);
     glTranslatef(0, 0, -6.0);
 
-    newXmag = mouse_x / width * 2 * M_PI;
-    newYmag = mouse_y / height * 2 * M_PI;
+    newXmag = (float)mouse_x / (float)width * 2 * M_PI;
+    newYmag = (float)mouse_y / (float)height * 2 * M_PI;
 
     diff = xmag - newXmag;
-    if (abs((int) diff) > 0.01) {
+    if (fabs(diff) > 0.01) {
 	xmag -= diff / 4.0;
     }
 
     diff = ymag - newYmag;
-    if (abs((int) diff) > 0.01) {
+    if (fabs(diff) > 0.01) {
 	ymag -= diff / 4.0;
     }
 
-    //glRotatef(-ymag, 1.0, 0, 0);
-    //glRotatef(-xmag, 0, 1.0, 0);
+    printf("%d, %d, %f, %f, %f, %f\n",
+	   mouse_x, mouse_y, xmag, ymag, newXmag, newYmag);
+    glRotatef(-ymag / M_PI * 180 , 1.0, 0, 0);
+    glRotatef(-xmag / M_PI * 180 , 0, 1.0, 0);
 
     //glScalef(50, 50, 50);
     glBegin(GL_QUADS);
@@ -66,7 +68,7 @@ static void draw(void)
     glVertex3f(-1, -1, -1);
     glColor4f(1, 0, 0, 1);
     glVertex3f(1, -1, -1);
-
+ 
     glColor4f(0, 1, 0, 1);
     glVertex3f(-1, 1, -1);
     glColor4f(0, 1, 1, 1);
@@ -96,7 +98,7 @@ static void draw(void)
 
     glEnd();
 
-    //glPopMatrix();
+    glPopMatrix();
 
     glutSwapBuffers();
 
@@ -113,6 +115,8 @@ static void reshape(int width, int height)
     glLoadIdentity();
     gluPerspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
     glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glScalef(1, -1, 1);
 }
 
 static void idle(void)
@@ -127,6 +131,12 @@ static void visible(int vis)
     } else {
 	glutIdleFunc(NULL);
     }
+}
+
+static void passive_motion(int x, int y)
+{
+    mouse_x = x;
+    mouse_y = y;
 }
 
 static void init(void)
@@ -154,6 +164,7 @@ int main(int argc, char *argv[])
     glutReshapeFunc(reshape);
     //glutKeyboardFunc(key);
     //glutSpecialFunc(special);
+    glutPassiveMotionFunc(passive_motion);
     glutVisibilityFunc(visible);
 
     glutMainLoop();
