@@ -238,13 +238,26 @@ int gl_init(struct psr_context *lpsr_cxt,
 
 int gl_reshape(int width, int height)
 {
-    glViewport(0, 0, width, height);    /* Reset The Current Viewport And Perspective Transformation */
+    const GLdouble fov = 60;
+    const GLdouble aspect = width / height;
+    const GLdouble z = height / 2 / 0.577350269; /* tan(30 deg) */
+    const GLdouble z_near = z / 10;
+    const GLdouble z_far = z * 10;
+
+    glViewport(0, 0, width, height);
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
+    gluPerspective(fov, aspect, z_near, z_far);
+    //glOrtho(-width/2, width/2, -height/2, height/2, -1000, 1000);
+
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     /* flip y-axis to match with the processing coordinate */
     glScalef(1, -1, 1);
+    /* adjust the window to the correct position because the camera
+     * sits at the origin.  tricky. */
+    glTranslatef(-width/2, -height/2, -z);
+
     return glCheckError();
 }

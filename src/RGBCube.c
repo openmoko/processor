@@ -20,12 +20,10 @@ static void draw(void)
 
     push_matrix();
 
-    //translate(width / 2, height / 2, -30);
-    
-    translate(0, 0, -6.0);
+    translate(width / 2, height / 2, -30);
 
-    newXmag = mouse_x / (float) width * TWO_PI;
-    newYmag = mouse_y / (float) height * TWO_PI;
+    newXmag = (float) mouse_x / (float) width * TWO_PI;
+    newYmag = (float) mouse_y / (float) height * TWO_PI;
 
     diff = xmag - newXmag;
     if (fabsf(diff) > 0.01) {
@@ -40,7 +38,7 @@ static void draw(void)
     rotate_x(-ymag);
     rotate_y(-xmag);
 
-    //scale(50, 50, 50);
+    scale(50, 50, 50);
 
     begin_shape(QUADS);
 
