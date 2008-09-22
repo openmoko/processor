@@ -8,13 +8,6 @@
 
 static struct psr_context *psr_cxt = NULL;
 
-struct vertex {
-    float x;
-    float y;
-    float z;
-    struct llist_head list;
-};
-
 struct color_internal {
     float r;
     float g;
@@ -22,7 +15,15 @@ struct color_internal {
     float a;
 };
 
-static struct color_internal stroke_color, fill_color;
+struct vertex {
+    float x;
+    float y;
+    float z;
+    struct color_internal color;
+    struct llist_head list;
+};
+
+static struct color_internal stroke_color;
 
 static LLIST_HEAD(vertex_list_head);
 
@@ -35,7 +36,7 @@ static inline int glCheckError(void)
     psr_debug("glCheckError");
     while ((e = glGetError()) != GL_NO_ERROR) {
 	r = 1;
-	psr_warn("%s", gluErrorString(e));
+	psr_error("%s", gluErrorString(e));
     }
     return r;
 }
@@ -92,13 +93,16 @@ static int scale(float x, float y, float z)
 
 static int begin_shape(int mode)
 {
-    int r;
+    /* the idea is we draw the inside of the shape first, then we draw
+     * the edges of the shape. */
+    int r = 0;
     switch (mode) {
     case POINTS:
 	glmode = GL_POINTS;
-	break;
+	goto exit_no_begin;
     case LINES:
 	glmode = GL_LINES;
+	goto exit_no_begin;
 	break;
     case TRIANGLES:
 	glmode = GL_TRIANGLES;
@@ -119,12 +123,15 @@ static int begin_shape(int mode)
 	glmode = GL_POLYGON;
 	break;
     default:
-	psr_system_error(EINVAL, "invalid 'mode' argument.");
+	psr_error("invalid 'mode' argument.");
+	return 1;
     }
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     r = glCheckError();
     /* well, don't call glGetError before glEnd */
     glBegin(glmode);
+
+exit_no_begin:
     return r;
 }
 
@@ -136,42 +143,27 @@ static int vertex(float x, float y, float z, float u, float v)
     if (!vertex) {
 	psr_system_error(errno, "No memory for new vertex.");
     }
+
     vertex->x = x;
     vertex->y = y;
     vertex->z = z;
+    /* remember what stroke color we use for this vertex.  we need
+     * this later. */
+    vertex->color = stroke_color;
     llist_add_tail(&vertex->list, &vertex_list_head);
-
-    /* we only care about fill here. */
-    if (!psr_cxt->fill) {
-	return 0;
+    if (glmode != GL_POINTS && glmode != GL_LINES) {
+	glVertex3f(x, y, z);
     }
-
-    glVertex3f(x, y, z);
     return 0;
 }
 
 static int end_shape(int end_mode)
 {
-    struct vertex *pos, *n;
-
-    glEnd();
-    if (!psr_cxt->stroke) {
-	/* FIXME: does not free */
-	psr_debug("no stroke, don't draw edges.");
-	goto exit;
-    }
+    struct llist_head *pos, *n;
 
     switch (glmode) {
     case GL_POINTS:
     case GL_LINES:
-	/* don't need to draw the edge.  already did. */
-	goto exit;
-    case GL_TRIANGLES:
-    case GL_TRIANGLE_FAN:
-    case GL_TRIANGLE_STRIP:
-    case GL_QUADS:
-    case GL_QUAD_STRIP:
-	/* draw the edges */
 	break;
     case GL_POLYGON:
 	/* depends on CLOSE or not */
@@ -180,28 +172,39 @@ static int end_shape(int end_mode)
 	} else {
 	    glmode = GL_LINE_LOOP;
 	}
+    case GL_TRIANGLES:
+    case GL_TRIANGLE_FAN:
+    case GL_TRIANGLE_STRIP:
+    case GL_QUADS:
+    case GL_QUAD_STRIP:
+	/* okay for these shapes we did glBegin() so now we have to
+	 * glEnd() it. */
+	glEnd();
 	break;
     default:
-	break;
+	psr_error("Invalid internal variable: glmode (%d)."
+		  "  Something is very wrong.", glmode);
+	return 1;
     }
+    /* now draw the edges */
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glBegin(glmode);
-    llist_for_each_entry_safe(pos, n, &vertex_list_head, list) {
-	glVertex3f(pos->x, pos->y, pos->z);
-	free(pos);
+    llist_for_each_safe(pos, n, &vertex_list_head) {
+	struct vertex *v = llist_entry(pos, struct vertex, list);
+	psr_debug("color: %f, %f, %f, %f\n point: %f, %f, %f\n",
+		  v->color.r, v->color.g, v->color.b, v->color.a,
+		  v->x, v->y, v->z);
+	glColor4f(v->color.r, v->color.g, v->color.b, v->color.a);
+	glVertex3f(v->x, v->y, v->z);
+	llist_del(pos);
+	free(v);
     }
     glEnd();
-
-exit:
     return glCheckError();
 }
 
 static int fill(float r, float g, float b, float a)
 {
-    fill_color.r = r;
-    fill_color.g = g;
-    fill_color.b = b;
-    fill_color.a = a;
     glColor4f(r, g, b, a);
     return 0;
 }
@@ -211,12 +214,12 @@ int gl_init(struct psr_context *lpsr_cxt,
 {
     int r = 0;
     glShadeModel(GL_SMOOTH);
-    glClearColor(1, 1, 1, 1);
     glClearDepth(1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
     glFlush();
     r = glCheckError();
 

@@ -94,7 +94,6 @@ int size(int lwidth, int lheight)
 int stroke(float r, float g, float b, float a)
 {
     psr_debug("stroke(%f, %f, %f, %f)", r, g, b, a);
-    psr_context.stroke = 1;
     return renderer_context.stroke(r, g, b, a);
 }
 
@@ -103,7 +102,6 @@ int no_stroke(void)
     int r;
     psr_debug("no_stroke");
     r = stroke(0, 0, 0, 0);
-    psr_context.stroke = 0;
     return r;
 }
 
@@ -182,7 +180,6 @@ int end_shape(int end_mode)
 int fill(float r, float g, float b, float a)
 {
     psr_debug("fill(%f, %f, %f, %f)", r, g, b, a);
-    psr_context.fill = 1;
     return renderer_context.fill(r, g, b, a);
 }
 
@@ -191,7 +188,6 @@ int no_fill(void)
     int r;
     psr_debug("no_fill");
     r = fill(0, 0, 0, 0);
-    psr_context.fill = 0;
     return r;
 }
 
@@ -221,10 +217,6 @@ int processor_init(void)
     psr_context.default_setup = default_setup;
     psr_context.setup = NULL;
     psr_context.draw = NULL;
-
-    /* FIXME: check this */
-    psr_context.stroke = 1;
-    psr_context.fill = 1;
 
     /* FIXME: check return value */
     load_renderer("./opengl/libpsr_gl.so");

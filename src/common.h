@@ -46,7 +46,6 @@ extern volatile int debug_level;
 
 
 struct psr_context {
-
     void (*update_key) (int key, int keycode);
     void (*key_pressed) (void);
     void (*key_released) (void);
@@ -63,9 +62,6 @@ struct psr_context {
     void (*default_setup) (void);
     void (*setup) (void);
     void (*draw) (void);
-
-    int stroke;
-    int fill;
 };
 
 struct psr_renderer_context {
