@@ -34,8 +34,6 @@ static void draw(void)
 	ymag -= diff / 4.0;
     }
 
-    printf("%d, %d, %f, %f, %f, %f\n",
-	   mouse_x, mouse_y, xmag, ymag, newXmag, newYmag);
     glRotatef(-ymag / M_PI * 180, 1.0, 0, 0);
     glRotatef(-xmag / M_PI * 180, 0, 1.0, 0);
 
