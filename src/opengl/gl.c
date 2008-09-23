@@ -35,7 +35,7 @@ static inline int glCheckError(void)
     int r = 0;
     psr_debug("glCheckError");
     while ((e = glGetError()) != GL_NO_ERROR) {
-	r = 1;
+	r = -1;
 	psr_error("%s", gluErrorString(e));
     }
     return r;
@@ -124,7 +124,7 @@ static int begin_shape(int mode)
 	break;
     default:
 	psr_error("invalid 'mode' argument.");
-	return 1;
+	return -1;
     }
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     r = glCheckError();
@@ -184,7 +184,7 @@ static int end_shape(int end_mode)
     default:
 	psr_error("Invalid internal variable: glmode (%d)."
 		  "  Something is very wrong.", glmode);
-	return 1;
+	return -1;
     }
     /* now draw the edges */
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

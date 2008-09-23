@@ -5,7 +5,7 @@ TARGETS = libpsr_gl.so
 all: ${TARGETS}
 
 libpsr_gl.so: gl.o glut.o
-	${CC} -shared -lGL -lGLU -lglut -o $@ $^
+	${CC} -shared -lrt -lGL -lGLU -lglut -o $@ $^
 
 .PHONY: clean
 clean:

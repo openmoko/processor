@@ -14,7 +14,12 @@ extern volatile int width;
 extern volatile int height;
 
 extern int size(int width, int height);
+extern int no_loop(void);
+extern int loop(void);
+extern int redraw(void);
+extern int frame_rate(float framerate);
 extern int stroke(float r, float g, float b, float a);
+extern int delay(int milliseconds);
 extern int no_stroke(void);
 extern int background(float r, float g, float b, float a);
 extern int push_matrix(void);

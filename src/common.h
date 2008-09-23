@@ -15,6 +15,10 @@ extern volatile int debug_level;
 	error_at_line(1, (e), __FILE__, __LINE__, ##fmt);	\
     } while(0);
 
+#define psr_system_warn(e, fmt...) do {				\
+	error_at_line(0, (e), __FILE__, __LINE__, ##fmt);	\
+    } while(0);
+
 #define psr_error(fmt...)					\
     if (debug_level & 1 << 3) {					\
 	fprintf(stderr, "ERROR:%s:%d:", __FILE__, __LINE__);	\
@@ -66,6 +70,10 @@ struct psr_context {
 
 struct psr_renderer_context {
     int (*size) (int width, int height);
+    int (*no_loop) (void);
+    int (*loop) (void);
+    int (*redraw) (void);
+    int (*frame_rate) (float framerate);
     int (*stroke) (float r, float g, float b, float a);
     int (*background) (float r, float g, float b, float a);
     int (*push_matrix) (void);

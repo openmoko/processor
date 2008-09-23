@@ -1,5 +1,6 @@
 #include <dlfcn.h>
 #include <errno.h>
+#include <time.h>
 
 #include "common.h"
 
@@ -50,7 +51,7 @@ error_exit:
     if (handle) {
 	dlclose(handle);
     }
-    return 1;
+    return -1;
 }
 
 static void update_key(int lkey, int lkeycode)
@@ -89,6 +90,43 @@ int size(int lwidth, int lheight)
     width = lwidth;
     height = lheight;
     return renderer_context.size(width, height);
+}
+
+int no_loop(void)
+{
+    psr_debug("no_loop");
+    return renderer_context.no_loop();
+}
+
+int loop(void)
+{
+    psr_debug("loop");
+    return renderer_context.loop();
+}
+
+int redraw(void)
+{
+    psr_debug("redraw");
+    return renderer_context.redraw();
+}
+
+int frame_rate(float framerate)
+{
+    psr_debug("frame_rate(%f)", framerate);
+    return renderer_context.frame_rate(framerate);
+}
+
+int delay(int milliseconds)
+{
+    int r;
+    struct timespec requested_time, remaining;
+    requested_time.tv_sec = milliseconds / 1000000;
+    requested_time.tv_nsec = (long int) milliseconds % 1000000 * 1000;
+    r = nanosleep(&requested_time, &remaining);
+    if (r) {
+	psr_system_warn(errno, "nanosleep error return.");
+    }
+    return r;
 }
 
 int stroke(float r, float g, float b, float a)
@@ -197,6 +235,7 @@ static void default_setup(void)
     background(1, 1, 1, 1);
     stroke(0, 0, 0, 1);
     fill(0, 0, 0, 1);
+    frame_rate(60);
 }
 
 int processor_init(void)
