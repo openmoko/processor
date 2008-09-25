@@ -3,7 +3,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
-#include "common.h"
+#include "psr_internal.h"
 #include "linux_list.h"
 
 static struct psr_context *psr_cxt = NULL;
@@ -23,23 +23,22 @@ struct vertex {
     struct llist_head list;
 };
 
-static struct color_internal stroke_color;
+static struct color_internal stroke_color, fill_color;
 
 static LLIST_HEAD(vertex_list_head);
 
 static int glmode = -1;
 
-static inline int glCheckError(void)
-{
-    GLenum e;
-    int r = 0;
-    psr_debug("glCheckError");
-    while ((e = glGetError()) != GL_NO_ERROR) {
-	r = -1;
-	psr_error("%s", gluErrorString(e));
-    }
-    return r;
-}
+#define glCheckError()					\
+    ({							\
+	GLenum e;					\
+	int r = 0;					\
+	while ((e = glGetError()) != GL_NO_ERROR) {	\
+	    r = -1;					\
+	    psr_error("%s", gluErrorString(e));		\
+	}						\
+	r;						\
+    })
 
 static int stroke(float r, float g, float b, float a)
 {
@@ -131,7 +130,7 @@ static int begin_shape(int mode)
     /* well, don't call glGetError before glEnd */
     glBegin(glmode);
 
-exit_no_begin:
+  exit_no_begin:
     return r;
 }
 
@@ -203,8 +202,45 @@ static int end_shape(int end_mode)
     return glCheckError();
 }
 
+static int arc(float x, float y, float width, float height, float start,
+	       float stop)
+{
+    /* FIXME: no error handling */
+    GLUquadricObj *qobj = gluNewQuadric();
+    float ratio = width / height;
+
+    height = height / 2; /* we need radius */
+
+    gluQuadricNormals(qobj, GLU_NONE);
+
+    /* set coordinates.  revert y again to get the angle right.
+     * set ratio to get asymmetry disk */
+    glPushMatrix();
+    glTranslatef(x, y, 0);
+    glScalef(ratio, -1, 1);
+
+    /* first pass, fill */
+    gluQuadricDrawStyle(qobj, GLU_FILL);
+    gluPartialDisk(qobj, 0, height, 20, 1, start, stop - start);
+
+    /* second pass, stroke */
+    glColor4f(stroke_color.r, stroke_color.g, stroke_color.b, stroke_color.a);
+    gluQuadricDrawStyle(qobj, GLU_LINE);
+    gluPartialDisk(qobj, 0, height, 20, 1, start, stop - start);
+
+    glPopMatrix();  /* restore coordinates */
+    gluDeleteQuadric(qobj);
+    /* restore color */
+    glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
+    return glCheckError();
+}
+
 static int fill(float r, float g, float b, float a)
 {
+    fill_color.r = r;
+    fill_color.g = g;
+    fill_color.b = b;
+    fill_color.a = a;
     glColor4f(r, g, b, a);
     return 0;
 }
@@ -220,6 +256,9 @@ int gl_init(struct psr_context *lpsr_cxt,
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
+    glEnable(GL_POINT_SMOOTH);
+    glEnable(GL_LINE_SMOOTH);
+    glEnable(GL_POLYGON_SMOOTH);
     glFlush();
     r = glCheckError();
 
@@ -235,6 +274,7 @@ int gl_init(struct psr_context *lpsr_cxt,
     renderer_cxt->vertex = vertex;
     renderer_cxt->end_shape = end_shape;
     renderer_cxt->fill = fill;
+    renderer_cxt->arc = arc;
 
     return r;
 }
@@ -243,7 +283,7 @@ int gl_reshape(int width, int height)
 {
     const GLdouble fov = 60;
     const GLdouble aspect = width / height;
-    const GLdouble z = height / 2 / 0.577350269; /* tan(30 deg) */
+    const GLdouble z = height / 2 / 0.577350269;	/* tan(30 deg) */
     const GLdouble z_near = z / 10;
     const GLdouble z_far = z * 10;
 
@@ -260,7 +300,7 @@ int gl_reshape(int width, int height)
     glScalef(1, -1, 1);
     /* adjust the window to the correct position because the camera
      * sits at the origin.  tricky. */
-    glTranslatef(-width/2, -height/2, -z);
+    glTranslatef(-width / 2, -height / 2, -z);
 
     return glCheckError();
 }

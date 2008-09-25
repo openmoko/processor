@@ -104,7 +104,17 @@ static void draw(void)
 
 int main(int argc, char *argv[])
 {
+    struct psr_usr_func my_func = {
+	.mouse_dragged = NULL,
+	.mouse_moved = NULL,
+	.mouse_released = NULL,
+	.mouse_pressed = NULL,
+	.key_released = NULL,
+	.key_pressed = NULL,
+	.setup = setup,
+	.draw = draw,
+    };
     processor_init();
-    processor_run(setup, draw);
+    processor_run(&my_func);
     return 0;
 }

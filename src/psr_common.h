@@ -1,6 +1,17 @@
 #ifndef PSR_CONSTANTS_H
 #define PSR_CONSTANTS_H
 
+struct psr_usr_func {
+    void (*mouse_dragged) (void);
+    void (*mouse_moved) (void);
+    void (*mouse_released) (void);
+    void (*mouse_pressed) (void);
+    void (*key_released) (void);
+    void (*key_pressed) (void);
+    void (*setup) (void);
+    void (*draw) (void);
+};
+
 /* constants */
 
 #include <math.h>
@@ -222,6 +233,7 @@
 
 // cursor types
 
+#define NONE (-1)
 #define ARROW (0)
 #define CROSS (1)
 #define HAND (2)

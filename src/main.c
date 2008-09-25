@@ -1,8 +1,12 @@
+#include <limits.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <time.h>
 
-#include "common.h"
+#include "psr_internal.h"
+
+/* Force a compilation error if condition is true */
+#define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 
 struct psr_context psr_context;
 struct psr_renderer_context renderer_context;
@@ -19,6 +23,9 @@ volatile int p_mouse_x;
 volatile int p_mouse_y;
 volatile int width;
 volatile int height;
+
+static int g_rect_mode;
+static int g_ellipse_mode;
 
 static int (*main_loop_start) (void);
 
@@ -57,7 +64,7 @@ error_exit:
 static void update_key(int lkey, int lkeycode)
 {
     key = lkey;
-    if (lkeycode > -1) {
+    if (lkeycode != NONE) {
 	keycode = lkeycode;
     }
 }
@@ -68,7 +75,7 @@ static void update_mouse(int x, int y, int button)
     mouse_x = x;
     p_mouse_y = mouse_y;
     mouse_y = y;
-    if (button > -1) {
+    if (button != NONE) {
 	mouse_button = button;
     }
 }
@@ -77,11 +84,6 @@ static void update_size(int lwidth, int lheight)
 {
     width = lwidth;
     height = lheight;
-}
-
-static void null_stub(void)
-{
-    return;
 }
 
 int size(int lwidth, int lheight)
@@ -110,12 +112,6 @@ int redraw(void)
     return renderer_context.redraw();
 }
 
-int frame_rate(float framerate)
-{
-    psr_debug("frame_rate(%f)", framerate);
-    return renderer_context.frame_rate(framerate);
-}
-
 int delay(int milliseconds)
 {
     int r;
@@ -127,6 +123,69 @@ int delay(int milliseconds)
 	psr_system_warn(errno, "nanosleep error return.");
     }
     return r;
+}
+
+int frame_rate(float framerate)
+{
+    psr_debug("frame_rate(%f)", framerate);
+    return renderer_context.frame_rate(framerate);
+}
+
+int cursor(int type)
+{
+    psr_debug("cursor(%d)", type);
+    return renderer_context.cursor(type);
+}
+
+int no_cursor(void)
+{
+    psr_debug("no_cursor");
+    return renderer_context.cursor(NONE);
+}
+
+const char *binary(int i)
+{
+    static char buf[1024];  /* supports up to 1024 bits */
+    char *p = buf;
+    int len = sizeof(i) * 8;  /* length in bits */
+    BUILD_BUG_ON(len >= 1024);
+    while(len > 0) {
+	*p++ = i >> --len & 1 ? '1' : '0';
+    }
+    *p = 0;
+    return buf;
+}
+
+int unbinary(const char *s)
+{
+    long int i;
+    i = strtol(s, NULL, 2);
+    if ((i == LONG_MIN || i == LONG_MAX) && errno == ERANGE) {
+	psr_system_error(errno, "unbinary(%s) out of range", s);
+	return -1;
+    }
+    /* FIXME: should care about the long -> int conversion */
+    return (int) i;
+}
+
+const char *hex(int i)
+{
+    static char buf[256];  /* supports up to 1024 bits */
+    BUILD_BUG_ON(sizeof(i) > (1024 / 8));
+    snprintf(buf, 256, "%X", i);
+    return buf;
+}
+
+int unhex(const char *s)
+{
+    long int i;
+    i = strtol(s, NULL, 16);
+    if ((i == LONG_MIN || i == LONG_MAX) && errno == ERANGE) {
+	psr_system_error(errno, "unhex(%s) out of range", s);
+	return -1;
+    }
+    /* FIXME: should care about the long -> int conversion */
+    return (int) i;
 }
 
 int stroke(float r, float g, float b, float a)
@@ -215,6 +274,152 @@ int end_shape(int end_mode)
     return renderer_context.end_shape(end_mode);
 }
 
+int triangle(float x1, float y1,
+	     float x2, float y2,
+	     float x3, float y3)
+{
+    begin_shape(TRIANGLES);
+    vertex(x1, y1, 0, 0, 0);
+    vertex(x2, y2, 0, 0, 0);
+    vertex(x3, y3, 0, 0, 0);
+    return end_shape(CLOSE);
+}
+
+int line(float x1, float y1, float z1,
+	 float x2, float y2, float z2)
+{
+    begin_shape(LINES);
+    vertex(x1, y1, z1, 0, 0);
+    vertex(x2, y2, z2, 0, 0);
+    return end_shape(CLOSE);
+}
+
+int arc(float x, float y, float width, float height, float start,
+	float stop)
+{
+    psr_debug("arc(%f, %f, %f, %f, %f, %f)", x, y, width, height, start, stop);
+    switch(g_ellipse_mode) {
+    case CENTER:
+	break;
+    case RADIUS:
+	width = width * 2;
+	height = height * 2;
+	break;
+    case CORNER:
+	x = x + width / 2;
+	y = y + height / 2;
+	break;
+    case CORNERS:
+	x = (x + width) / 2;
+	y = (y + height) / 2;
+	width = fabsf(x - width);
+	height = fabsf(y - height);
+	break;
+    default:
+	psr_error("invalid g_ellipse_mode.  this should not happen");
+	return -1;
+    }
+    return renderer_context.arc(x, y, width, height, start, stop);
+}
+
+int point(float x, float y, float z)
+{
+    psr_debug("point(%f, %f, %f)", x, y, z);
+    begin_shape(POINTS);
+    vertex(x, y, z, 0, 0);
+    return end_shape(CLOSE);
+}
+
+int quad(float x1, float y1,
+	 float x2, float y2,
+	 float x3, float y3,
+	 float x4, float y4)
+{
+    psr_debug("quad(%f, %f, %f, %f, %f, %f, %f, %f)", x1, y1, x2, y2, x3, y3, x4, y4);
+    begin_shape(QUADS);
+    vertex(x1, y1, 0, 0, 0);
+    vertex(x2, y2, 0, 0, 0);
+    vertex(x3, y3, 0, 0, 0);
+    vertex(x4, y4, 0, 0, 0);
+    return end_shape(CLOSE);
+}
+
+int ellipse(float x, float y, float width, float height)
+{
+    /* FIXME: room for improvement.  maybe don't call arc */
+    psr_debug("ellipse(%f, %f, %f, %f)", x, y, width, height);
+    return arc(x, y, width, height, 0, 360);
+}
+
+int ellipse_mode(int mode)
+{
+    switch(mode) {
+    case CENTER:
+    case RADIUS:
+    case CORNER:
+    case CORNERS:
+	break;
+    default:
+	psr_error("invalid ellipse mode");
+	return -1;
+    }
+    g_ellipse_mode = mode;
+    return 0;
+}
+
+int rect(float x, float y, float width, float height)
+{
+    psr_debug("rect(%f, %f, %f, %f)", x, y, width, height);
+    begin_shape(QUADS);
+    switch(g_rect_mode) {
+    case CORNER:
+	vertex(x, y, 0, 0, 0);
+	vertex(x + width, y, 0, 0, 0);
+	vertex(x + width, y + height, 0, 0, 0);
+	vertex(x, y + height, 0, 0, 0);
+	break;
+    case CORNERS:
+	vertex(x, y, 0, 0, 0);
+	vertex(width, y, 0, 0, 0);
+	vertex(width, height, 0, 0, 0);
+	vertex(x, height, 0, 0, 0);
+	break;
+    case CENTER:
+	vertex(x - width / 2, y - height / 2, 0, 0, 0);
+	vertex(x + width / 2, y - height / 2, 0, 0, 0);
+	vertex(x + width / 2, y + height / 2, 0, 0, 0);
+	vertex(x - width / 2, y + height / 2, 0, 0, 0);
+	break;
+    case RADIUS:
+	vertex(x - width, y - height, 0, 0, 0);
+	vertex(x + width, y - height, 0, 0, 0);
+	vertex(x + width, y + height, 0, 0, 0);
+	vertex(x - width, y + height, 0, 0, 0);
+	break;
+    default:
+	end_shape(CLOSE);
+	psr_error("invalid g_rect_mode.  this should not happen.");
+	return -1;
+    }
+    return end_shape(CLOSE);
+}
+
+int rect_mode(int mode)
+{
+    switch(mode) {
+    case CORNER:
+    case CORNERS:
+    case CENTER:
+    case RADIUS:
+	break;
+    default:
+	psr_error("invalid rect mode");
+	return -1;
+    }
+    g_rect_mode = mode;
+    return 0;
+}
+
 int fill(float r, float g, float b, float a)
 {
     psr_debug("fill(%f, %f, %f, %f)", r, g, b, a);
@@ -236,26 +441,16 @@ static void default_setup(void)
     stroke(0, 0, 0, 1);
     fill(0, 0, 0, 1);
     frame_rate(60);
+    rect_mode(CORNER);
+    ellipse_mode(CENTER);
 }
 
 int processor_init(void)
 {
     psr_context.update_key = update_key;
-    psr_context.key_pressed = null_stub;
-    psr_context.key_released = null_stub;
-
     psr_context.update_mouse = update_mouse;
-    psr_context.mouse_dragged = null_stub;
-    psr_context.mouse_moved = null_stub;
-    psr_context.mouse_released = null_stub;
-    psr_context.mouse_pressed = null_stub;
-    psr_context.mouse_clicked = null_stub;
-
     psr_context.update_size = update_size;
-
     psr_context.default_setup = default_setup;
-    psr_context.setup = NULL;
-    psr_context.draw = NULL;
 
     /* FIXME: check return value */
     load_renderer("./opengl/libpsr_gl.so");
@@ -263,11 +458,9 @@ int processor_init(void)
     return 0;
 }
 
-int processor_run(void (*setup) (void),
-		  void (*draw) (void))
+int processor_run(struct psr_usr_func *usr_func)
 {
-    psr_context.setup = setup;
-    psr_context.draw = draw;
+    psr_context.usr_func = *usr_func;
     main_loop_start();
     return 0;
 }

@@ -1,6 +1,6 @@
 to add a function:
 
 processing.h (extern)
-common.h (struct)
 main.c (binding)
+psr_internal.h (struct)
 gl/glut (implementation, set context)

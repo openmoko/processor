@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <GL/glut.h>
 
-#include "common.h"
+#include "psr_internal.h"
 
 static struct psr_context *psr_cxt = NULL;
 static struct psr_renderer_context *renderer_cxt = NULL;
@@ -13,6 +13,11 @@ extern int gl_init(struct psr_context *psr_cxt,
 		   struct psr_renderer_context *renderer_cxt);
 
 extern int gl_reshape(int width, int height);
+
+#define SAFE_CALL(func, args...) \
+    if(func) {			 \
+	func(##args);		 \
+    }
 
 /* Subtract the `struct timespec' values X and Y,
    storing the result in RESULT.
@@ -53,16 +58,18 @@ static inline void timespec_add (
 static void display_draw(void)
 {
     psr_debug("display_draw");
-    psr_cxt->draw();
+    psr_cxt->usr_func.draw();
     glutSwapBuffers();
 }
 
 static void display_setup(void)
 {
     psr_debug("display_setup");
-    psr_cxt->setup();
-    glutSwapBuffers();
-    if (psr_cxt->draw) {
+    if (psr_cxt->usr_func.setup) {
+	psr_cxt->usr_func.setup();
+	glutSwapBuffers();
+    }
+    if (psr_cxt->usr_func.draw) {
 	glutDisplayFunc(display_draw);
     }
 }
@@ -103,7 +110,7 @@ static void idle(void)
 static void visible(int vis)
 {
     psr_debug("visible");
-    if (vis == GLUT_VISIBLE && psr_cxt->draw) {
+    if (vis == GLUT_VISIBLE && psr_cxt->usr_func.draw) {
 	glutIdleFunc(idle);
     } else {
 	glutIdleFunc(NULL);
@@ -112,7 +119,8 @@ static void visible(int vis)
 
 static void keyboard(unsigned char key, int x, int y)
 {
-    int keycode = -1;		/* -1 means we don't update keycode */
+    int keycode = NONE;		/* NONE means we don't update keycode */
+    psr_warn("keyboard");
     switch (key) {
     case BACKSPACE:
     case TAB:
@@ -131,6 +139,7 @@ static void keyboard(unsigned char key, int x, int y)
 /* NOTE: Does NOT support ALT, CONTROL and SHIFT */
 static void special(int key, int x, int y)
 {
+    psr_warn("special");
     switch (key) {
     case GLUT_KEY_UP:
 	psr_cxt->update_key(CODED, UP);
@@ -185,23 +194,22 @@ static void mouse(int button, int state, int x, int y)
     }
     psr_cxt->update_mouse(x, y, button);
     if (state == GLUT_DOWN) {
-	psr_cxt->mouse_pressed();
+	SAFE_CALL(psr_cxt->usr_func.mouse_pressed, );
     } else if (state == GLUT_UP) {
-	psr_cxt->mouse_released();
-	psr_cxt->mouse_clicked();
+	SAFE_CALL(psr_cxt->usr_func.mouse_released, );
     }
 }
 
 static void motion(int x, int y)
 {
-    psr_cxt->update_mouse(x, y, -1);	/* don't update button */
-    psr_cxt->mouse_dragged();
+    psr_cxt->update_mouse(x, y, NONE);	/* don't update button */
+    SAFE_CALL(psr_cxt->usr_func.mouse_dragged, );
 }
 
 static void passive_motion(int x, int y)
 {
-    psr_cxt->update_mouse(x, y, -1);	/* don't update button */
-    psr_cxt->mouse_moved();
+    psr_cxt->update_mouse(x, y, NONE);	/* don't update button */
+    SAFE_CALL(psr_cxt->usr_func.mouse_moved, );
 }
 
 static int size(int width, int height)
@@ -237,6 +245,39 @@ static int frame_rate(float framerate)
     return 0;
 }
 
+static int cursor(int type)
+{
+    switch(type) {
+    case NONE:
+	/* a special case: disable the cursor. */
+	type = GLUT_CURSOR_NONE;
+	break;
+    case ARROW:
+	type = GLUT_CURSOR_LEFT_ARROW;
+	break;
+    case CROSS:
+	type = GLUT_CURSOR_CROSSHAIR;
+	break;
+    case HAND:
+	type = GLUT_CURSOR_INFO;
+	break;
+    case MOVE:
+	type = GLUT_CURSOR_INFO;
+	break;
+    case TEXT:
+	type = GLUT_CURSOR_TEXT;
+	break;
+    case WAIT:
+	type = GLUT_CURSOR_WAIT;
+	break;
+    default:
+	psr_warn("Invalid cursor type: %d", type);
+	return -1;
+    }
+    glutSetCursor(type);
+    return 0;
+}
+
 int init(struct psr_context *lpsr_cxt,
 	 struct psr_renderer_context *lrenderer_cxt)
 {
@@ -247,6 +288,7 @@ int init(struct psr_context *lpsr_cxt,
     renderer_cxt->loop = loop;
     renderer_cxt->redraw = redraw;
     renderer_cxt->frame_rate = frame_rate;
+    renderer_cxt->cursor = cursor;
     return 0;
 }
 
