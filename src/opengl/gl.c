@@ -202,13 +202,18 @@ static int end_shape(int end_mode)
     return glCheckError();
 }
 
+static GLvoid glu_error_handle(GLenum e)
+{
+    psr_error("gluQuadric error: %s", gluErrorString(e));
+}
+
 static int arc(float x, float y, float width, float height, float start,
 	       float stop)
 {
-    /* FIXME: no error handling */
     GLUquadricObj *qobj = gluNewQuadric();
     float ratio = width / height;
 
+    gluQuadricCallback(qobj, GLU_ERROR, glu_error_handle);
     height = height / 2; /* we need radius */
 
     gluQuadricNormals(qobj, GLU_NONE);
@@ -221,6 +226,8 @@ static int arc(float x, float y, float width, float height, float start,
 
     /* first pass, fill */
     gluQuadricDrawStyle(qobj, GLU_FILL);
+    /* FIXME: should set the slices (20) to something that matchs the
+     * size of the arc. */
     gluPartialDisk(qobj, 0, height, 20, 1, start, stop - start);
 
     /* second pass, stroke */
