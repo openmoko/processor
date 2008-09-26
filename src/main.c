@@ -160,11 +160,11 @@ int unbinary(const char *s)
 {
     long int i;
     i = strtol(s, NULL, 2);
-    if ((i == LONG_MIN || i == LONG_MAX) && errno == ERANGE) {
-	psr_system_error(errno, "unbinary(%s) out of range", s);
+    if (((i == LONG_MIN || i == LONG_MAX) && errno == ERANGE)
+	|| (i < INT_MIN || i > INT_MAX)) {
+	psr_system_error(ERANGE, "unbinary(%s) out of range", s);
 	return -1;
     }
-    /* FIXME: should care about the long -> int conversion */
     return (int) i;
 }
 
@@ -180,11 +180,11 @@ int unhex(const char *s)
 {
     long int i;
     i = strtol(s, NULL, 16);
-    if ((i == LONG_MIN || i == LONG_MAX) && errno == ERANGE) {
-	psr_system_error(errno, "unhex(%s) out of range", s);
+    if (((i == LONG_MIN || i == LONG_MAX) && errno == ERANGE)
+	|| (i < INT_MIN || i > INT_MAX)) {
+	psr_system_error(ERANGE, "unhex(%s) out of range", s);
 	return -1;
     }
-    /* FIXME: should care about the long -> int conversion */
     return (int) i;
 }
 
