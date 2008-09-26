@@ -19,7 +19,8 @@ struct vertex {
     float x;
     float y;
     float z;
-    struct color_internal color;
+    struct color_internal stroke;
+    struct color_internal fill;
     struct llist_head list;
 };
 
@@ -92,16 +93,12 @@ static int scale(float x, float y, float z)
 
 static int begin_shape(int mode)
 {
-    /* the idea is we draw the inside of the shape first, then we draw
-     * the edges of the shape. */
-    int r = 0;
     switch (mode) {
     case POINTS:
 	glmode = GL_POINTS;
-	goto exit_no_begin;
+	break;
     case LINES:
 	glmode = GL_LINES;
-	goto exit_no_begin;
 	break;
     case TRIANGLES:
 	glmode = GL_TRIANGLES;
@@ -125,45 +122,77 @@ static int begin_shape(int mode)
 	psr_error("invalid 'mode' argument.");
 	return -1;
     }
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    r = glCheckError();
-    /* well, don't call glGetError before glEnd */
-    glBegin(glmode);
-
-  exit_no_begin:
-    return r;
+    return 0;
 }
 
-/** don't care about texture yet. */
+/** FIXME: don't care about texture yet. */
 static int vertex(float x, float y, float z, float u, float v)
 {
-    /* add it into our list first. */
     struct vertex *vertex = malloc(sizeof(struct vertex));
     if (!vertex) {
 	psr_system_error(errno, "No memory for new vertex.");
     }
-
     vertex->x = x;
     vertex->y = y;
     vertex->z = z;
-    /* remember what stroke color we use for this vertex.  we need
-     * this later. */
-    vertex->color = stroke_color;
+    vertex->stroke = stroke_color;
+    vertex->fill = fill_color;
     llist_add_tail(&vertex->list, &vertex_list_head);
-    if (glmode != GL_POINTS && glmode != GL_LINES) {
-	glVertex3f(x, y, z);
-    }
     return 0;
 }
+
+static int bezier_vertex(float cx1, float cy1, float cz1,
+			 float cx2, float cy2, float cz2,
+			 float x, float y, float z)
+{
+    struct vertex *last_v;
+    GLfloat ctrlpoints[4][3];
+
+    /* get the last vertex */
+    last_v = llist_entry(vertex_list_head.prev, struct vertex, list);
+    if (!last_v) {
+	/* if there is none, no way we can draw the curve */
+	psr_error("Set at least one vertex before you call bezier_vertex");
+	return -1;
+    }
+    ctrlpoints[0][0] = last_v->x;
+    ctrlpoints[0][1] = last_v->y;
+    ctrlpoints[0][2] = last_v->z;
+    ctrlpoints[1][0] = cx1;
+    ctrlpoints[1][1] = cy1;
+    ctrlpoints[1][2] = cz1;
+    ctrlpoints[2][0] = cx2;
+    ctrlpoints[2][1] = cy2;
+    ctrlpoints[2][2] = cz2;
+    ctrlpoints[3][0] = x;
+    ctrlpoints[3][1] = y;
+    ctrlpoints[3][2] = z;
+    glMap1f(GL_MAP1_VERTEX_3, 0, 1, 3, 4, (GLfloat *) ctrlpoints);
+    glEnable(GL_MAP1_VERTEX_3);
+    return 0;
+}
+
 
 static int end_shape(int end_mode)
 {
     struct llist_head *pos, *n;
 
+    /* we fill the shape first, then draw the edges */
+
+    /* do fill */
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glBegin(glmode);
+    llist_for_each(pos, &vertex_list_head) {
+	struct vertex *v = llist_entry(pos, struct vertex, list);
+	psr_debug("fill color: %f, %f, %f, %f\n point: %f, %f, %f\n",
+		  v->fill.r, v->fill.g, v->fill.b, v->fill.a,
+		  v->x, v->y, v->z);
+	glColor4f(v->fill.r, v->fill.g, v->fill.b, v->fill.a);
+	glVertex3f(v->x, v->y, v->z);
+    }
+    glEnd();
+
     switch (glmode) {
-    case GL_POINTS:
-    case GL_LINES:
-	break;
     case GL_POLYGON:
 	/* depends on CLOSE or not */
 	if (end_mode == CLOSE) {
@@ -171,29 +200,29 @@ static int end_shape(int end_mode)
 	} else {
 	    glmode = GL_LINE_LOOP;
 	}
+    case GL_POINTS:
+    case GL_LINES:
     case GL_TRIANGLES:
     case GL_TRIANGLE_FAN:
     case GL_TRIANGLE_STRIP:
     case GL_QUADS:
     case GL_QUAD_STRIP:
-	/* okay for these shapes we did glBegin() so now we have to
-	 * glEnd() it. */
-	glEnd();
 	break;
     default:
 	psr_error("Invalid internal variable: glmode (%d)."
 		  "  Something is very wrong.", glmode);
 	return -1;
     }
+
     /* now draw the edges */
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glBegin(glmode);
     llist_for_each_safe(pos, n, &vertex_list_head) {
 	struct vertex *v = llist_entry(pos, struct vertex, list);
-	psr_debug("color: %f, %f, %f, %f\n point: %f, %f, %f\n",
-		  v->color.r, v->color.g, v->color.b, v->color.a,
+	psr_debug("stroke color: %f, %f, %f, %f\n point: %f, %f, %f\n",
+		  v->stroke.r, v->stroke.g, v->stroke.b, v->stroke.a,
 		  v->x, v->y, v->z);
-	glColor4f(v->color.r, v->color.g, v->color.b, v->color.a);
+	glColor4f(v->stroke.r, v->stroke.g, v->stroke.b, v->stroke.a);
 	glVertex3f(v->x, v->y, v->z);
 	llist_del(pos);
 	free(v);
@@ -248,7 +277,6 @@ static int fill(float r, float g, float b, float a)
     fill_color.g = g;
     fill_color.b = b;
     fill_color.a = a;
-    glColor4f(r, g, b, a);
     return 0;
 }
 
