@@ -76,6 +76,10 @@ struct psr_renderer_context {
     int (*end_shape) (int end_mode);
     int (*arc) (float x, float y, float width, float height, float start,
 		float stop);
+    int (*bezier_detail) (int level);
+    int (*bezier_vertex) (float cx1, float cy1, float cz1,
+			  float cx2, float cy2, float cz2,
+			  float x, float y, float z);
     int (*fill) (float r, float g, float b, float a);
 };
 

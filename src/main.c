@@ -11,8 +11,8 @@
 struct psr_context psr_context;
 struct psr_renderer_context renderer_context;
 
-volatile int debug_level = 1 << 3 | 1 << 2;
-//volatile int debug_level = 15;
+//volatile int debug_level = 1 << 3 | 1 << 2;
+volatile int debug_level = 15;
 
 volatile char key;
 volatile int keycode;
@@ -116,6 +116,7 @@ int delay(int milliseconds)
 {
     int r;
     struct timespec requested_time, remaining;
+    psr_debug("delay(%d)", milliseconds);
     requested_time.tv_sec = milliseconds / 1000000;
     requested_time.tv_nsec = (long int) milliseconds % 1000000 * 1000;
     r = nanosleep(&requested_time, &remaining);
@@ -278,6 +279,7 @@ int triangle(float x1, float y1,
 	     float x2, float y2,
 	     float x3, float y3)
 {
+    psr_debug("triangle(%f, %f, %f, %f, %f, %f)", x1, y1, x2, y2, x3, y3);
     begin_shape(TRIANGLES);
     vertex(x1, y1, 0, 0, 0);
     vertex(x2, y2, 0, 0, 0);
@@ -288,6 +290,7 @@ int triangle(float x1, float y1,
 int line(float x1, float y1, float z1,
 	 float x2, float y2, float z2)
 {
+    psr_debug("line(%f, %f, %f, %f, %f, %f)", x1, y1, z1, x2, y2, z2);
     begin_shape(LINES);
     vertex(x1, y1, z1, 0, 0);
     vertex(x2, y2, z2, 0, 0);
@@ -353,6 +356,7 @@ int ellipse(float x, float y, float width, float height)
 
 int ellipse_mode(int mode)
 {
+    psr_debug("ellipse_mode(%d)", mode);
     switch(mode) {
     case CENTER:
     case RADIUS:
@@ -406,6 +410,7 @@ int rect(float x, float y, float width, float height)
 
 int rect_mode(int mode)
 {
+    psr_debug("rect_mode(%d)", mode);
     switch(mode) {
     case CORNER:
     case CORNERS:
@@ -418,6 +423,32 @@ int rect_mode(int mode)
     }
     g_rect_mode = mode;
     return 0;
+}
+
+int bezier_detail(int level)
+{
+    psr_debug("bezier_detail(%d)", level);
+    return renderer_context.bezier_detail(level);
+}
+
+int bezier_vertex(float cx1, float cy1, float cz1,
+		  float cx2, float cy2, float cz2,
+		  float x, float y, float z)
+{
+    psr_debug("bezier_vertex(%f, %f, %f, %f, %f, %f, %f, %f, %f",
+	      cx1, cy1, cz1, cx2, cy2, cz2, x, y, z);
+    return renderer_context.bezier_vertex(cx1, cy1, cz1, cx2, cy2, cz2, x, y, z);
+}
+
+int bezier(float x1, float y1, float z1,
+	   float cx1, float cy1, float cz1,
+	   float cx2, float cy2, float cz2,
+	   float x2, float y2, float z2)
+{
+    begin_shape(POLYGON);
+    vertex(x1, y1, z1, 0, 0);
+    bezier_vertex(cx1, cy1, cz1, cx2, cy2, cz2, x2, y2, z2);
+    return end_shape(OPEN);
 }
 
 int fill(float r, float g, float b, float a)
@@ -443,6 +474,7 @@ static void default_setup(void)
     frame_rate(60);
     rect_mode(CORNER);
     ellipse_mode(CENTER);
+    bezier_detail(20);
 }
 
 int processor_init(void)

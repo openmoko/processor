@@ -12,7 +12,30 @@ static void setup(void)
     return;
 }
 
-static void draw(void)
+static void draw2d(void)
+{
+    background(0, 0, 0, 0);
+
+    push_matrix();
+    scale(2, 2, 2);
+
+    no_fill();
+    stroke(0.3, 0.3, 0.3, 1);
+    bezier_detail(1);
+    bezier(85, 20, 0, 10, 10, 0, 90, 90, 0, 15, 80, 0);
+    stroke(0.6, 0.6, 0.6, 1);
+    bezier_detail(3);
+    bezier(85, 20, 0, 10, 10, 0, 90, 90, 0, 15, 80, 0);
+    stroke(0.9, 0.9, 0.9, 1);
+    bezier_detail(12);
+    bezier(85, 20, 0, 10, 10, 0, 90, 90, 0, 15, 80, 0);
+
+    pop_matrix();
+    no_loop();
+    return;
+}
+
+static void draw3d(void)
 {
     float diff;
 
@@ -112,7 +135,7 @@ int main(int argc, char *argv[])
 	.key_released = NULL,
 	.key_pressed = NULL,
 	.setup = setup,
-	.draw = draw,
+	.draw = draw2d,
     };
     processor_init();
     processor_run(&my_func);

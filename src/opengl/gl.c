@@ -19,6 +19,8 @@ struct vertex {
     float x;
     float y;
     float z;
+    /* if not 0, it means this is a glList. */
+    GLuint gl_list;
     struct color_internal stroke;
     struct color_internal fill;
     struct llist_head list;
@@ -29,6 +31,7 @@ static struct color_internal stroke_color, fill_color;
 static LLIST_HEAD(vertex_list_head);
 
 static int glmode = -1;
+static int bezier_detail_level;
 
 #define glCheckError()					\
     ({							\
@@ -135,9 +138,16 @@ static int vertex(float x, float y, float z, float u, float v)
     vertex->x = x;
     vertex->y = y;
     vertex->z = z;
+    vertex->gl_list = 0;  /* not a list */
     vertex->stroke = stroke_color;
     vertex->fill = fill_color;
     llist_add_tail(&vertex->list, &vertex_list_head);
+    return 0;
+}
+
+static int bezier_detail(int level)
+{
+    bezier_detail_level = level;
     return 0;
 }
 
@@ -145,8 +155,9 @@ static int bezier_vertex(float cx1, float cy1, float cz1,
 			 float cx2, float cy2, float cz2,
 			 float x, float y, float z)
 {
-    struct vertex *last_v;
+    struct vertex *last_v, *v;
     GLfloat ctrlpoints[4][3];
+    int i;
 
     /* get the last vertex */
     last_v = llist_entry(vertex_list_head.prev, struct vertex, list);
@@ -155,6 +166,16 @@ static int bezier_vertex(float cx1, float cy1, float cz1,
 	psr_error("Set at least one vertex before you call bezier_vertex");
 	return -1;
     }
+    v = malloc(sizeof(struct vertex));
+    if (!v) {
+	psr_system_error(errno, "No memory for new vertex.");
+    }
+    v->x = x;
+    v->y = y;
+    v->z = z;
+    v->stroke = stroke_color;
+    v->fill = fill_color;
+
     ctrlpoints[0][0] = last_v->x;
     ctrlpoints[0][1] = last_v->y;
     ctrlpoints[0][2] = last_v->z;
@@ -167,35 +188,47 @@ static int bezier_vertex(float cx1, float cy1, float cz1,
     ctrlpoints[3][0] = x;
     ctrlpoints[3][1] = y;
     ctrlpoints[3][2] = z;
-    glMap1f(GL_MAP1_VERTEX_3, 0, 1, 3, 4, (GLfloat *) ctrlpoints);
-    glEnable(GL_MAP1_VERTEX_3);
-    return 0;
-}
 
+    glMap1f(GL_MAP1_VERTEX_3, 0, 1, 3, 4, (GLfloat *) ctrlpoints);
+
+    /* we create a list of this curve for later usage. */
+    v->gl_list = glGenLists(1);
+    if (v->gl_list == 0) {
+	free(v);
+	return glCheckError();
+    }
+    glNewList(v->gl_list, GL_COMPILE);
+    for (i = 0; i <= bezier_detail_level; ++i) {
+	glEvalCoord1f((GLfloat) i / bezier_detail_level);
+    }
+    glEndList();
+    llist_add_tail(&v->list, &vertex_list_head);
+
+    return glCheckError();
+}
 
 static int end_shape(int end_mode)
 {
-    struct llist_head *pos, *n;
+    struct vertex *pos, *n;
 
     /* we fill the shape first, then draw the edges */
 
     /* do fill */
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glBegin(glmode);
-    llist_for_each(pos, &vertex_list_head) {
-	struct vertex *v = llist_entry(pos, struct vertex, list);
-	psr_debug("fill color: %f, %f, %f, %f\n point: %f, %f, %f\n",
-		  v->fill.r, v->fill.g, v->fill.b, v->fill.a,
-		  v->x, v->y, v->z);
-	glColor4f(v->fill.r, v->fill.g, v->fill.b, v->fill.a);
-	glVertex3f(v->x, v->y, v->z);
+    llist_for_each_entry(pos, &vertex_list_head, list) {
+	glColor4f(pos->fill.r, pos->fill.g, pos->fill.b, pos->fill.a);
+	if (pos->gl_list) {
+	    glCallList(pos->gl_list);
+	} else {
+	    glVertex3f(pos->x, pos->y, pos->z);
+	}
     }
     glEnd();
-
     switch (glmode) {
     case GL_POLYGON:
 	/* depends on CLOSE or not */
-	if (end_mode == CLOSE) {
+	if (end_mode == OPEN) {
 	    glmode = GL_LINE_STRIP;
 	} else {
 	    glmode = GL_LINE_LOOP;
@@ -217,17 +250,23 @@ static int end_shape(int end_mode)
     /* now draw the edges */
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glBegin(glmode);
-    llist_for_each_safe(pos, n, &vertex_list_head) {
-	struct vertex *v = llist_entry(pos, struct vertex, list);
-	psr_debug("stroke color: %f, %f, %f, %f\n point: %f, %f, %f\n",
-		  v->stroke.r, v->stroke.g, v->stroke.b, v->stroke.a,
-		  v->x, v->y, v->z);
-	glColor4f(v->stroke.r, v->stroke.g, v->stroke.b, v->stroke.a);
-	glVertex3f(v->x, v->y, v->z);
-	llist_del(pos);
-	free(v);
+    llist_for_each_entry(pos, &vertex_list_head, list) {
+	glColor4f(pos->stroke.r, pos->stroke.g, pos->stroke.b, pos->stroke.a);
+	if (pos->gl_list) {
+	    glCallList(pos->gl_list);
+	} else {
+	    glVertex3f(pos->x, pos->y, pos->z);
+	}
     }
     glEnd();
+
+    llist_for_each_entry_safe(pos, n, &vertex_list_head, list) {
+	if (pos->gl_list) {
+	    glDeleteLists(pos->gl_list, 1);
+	}
+	llist_del(&pos->list);
+	free(pos);
+    }
     return glCheckError();
 }
 
@@ -266,8 +305,6 @@ static int arc(float x, float y, float width, float height, float start,
 
     glPopMatrix();  /* restore coordinates */
     gluDeleteQuadric(qobj);
-    /* restore color */
-    glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
     return glCheckError();
 }
 
@@ -294,6 +331,7 @@ int gl_init(struct psr_context *lpsr_cxt,
     glEnable(GL_POINT_SMOOTH);
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_POLYGON_SMOOTH);
+    glEnable(GL_MAP1_VERTEX_3);
     glFlush();
     r = glCheckError();
 
@@ -310,6 +348,8 @@ int gl_init(struct psr_context *lpsr_cxt,
     renderer_cxt->end_shape = end_shape;
     renderer_cxt->fill = fill;
     renderer_cxt->arc = arc;
+    renderer_cxt->bezier_detail = bezier_detail;
+    renderer_cxt->bezier_vertex = bezier_vertex;
 
     return r;
 }
