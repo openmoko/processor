@@ -11,8 +11,8 @@
 struct psr_context psr_context;
 struct psr_renderer_context renderer_context;
 
-//volatile int debug_level = 1 << 3 | 1 << 2;
-volatile int debug_level = 15;
+volatile int debug_level = 1 << 3 | 1 << 2;
+//volatile int debug_level = 15;
 
 volatile char key;
 volatile int keycode;
@@ -197,10 +197,8 @@ int stroke(float r, float g, float b, float a)
 
 int no_stroke(void)
 {
-    int r;
     psr_debug("no_stroke");
-    r = stroke(0, 0, 0, 0);
-    return r;
+    return renderer_context.no_stroke();
 }
 
 int background(float r, float g, float b, float a)
@@ -451,6 +449,23 @@ int bezier(float x1, float y1, float z1,
     return end_shape(OPEN);
 }
 
+int box(float width, float height, float depth)
+{
+    begin_shape(QUAD_STRIP);
+    vertex(0, 0, 0, 0, 0);
+    vertex(width, 0, 0, 0, 0);
+    vertex(0, height, 0, 0, 0);
+    vertex(width, height, 0, 0, 0);
+    vertex(0, height, depth, 0, 0);
+    vertex(width, height, depth, 0, 0);
+/*    vertex(0, 0, depth, 0, 0);
+    vertex(width, 0, depth, 0, 0);
+    vertex(0, 0, 0, 0, 0);
+    vertex(width, 0, 0, 0, 0); */
+    end_shape(CLOSE);
+    return 0;
+}
+
 int fill(float r, float g, float b, float a)
 {
     psr_debug("fill(%f, %f, %f, %f)", r, g, b, a);
@@ -459,10 +474,8 @@ int fill(float r, float g, float b, float a)
 
 int no_fill(void)
 {
-    int r;
     psr_debug("no_fill");
-    r = fill(0, 0, 0, 0);
-    return r;
+    return renderer_context.no_fill();
 }
 
 /* default setup */
@@ -470,7 +483,7 @@ static void default_setup(void)
 {
     background(1, 1, 1, 1);
     stroke(0, 0, 0, 1);
-    fill(0, 0, 0, 1);
+    fill(1, 1, 1, 1);
     frame_rate(60);
     rect_mode(CORNER);
     ellipse_mode(CENTER);

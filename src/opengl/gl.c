@@ -32,6 +32,7 @@ static LLIST_HEAD(vertex_list_head);
 
 static int glmode = -1;
 static int bezier_detail_level;
+static int dont_fill = 0, dont_stroke = 0;
 
 #define glCheckError()					\
     ({							\
@@ -46,10 +47,17 @@ static int bezier_detail_level;
 
 static int stroke(float r, float g, float b, float a)
 {
+    dont_stroke = 0;
     stroke_color.r = r;
     stroke_color.g = g;
     stroke_color.b = b;
     stroke_color.a = a;
+    return 0;
+}
+
+static int no_stroke()
+{
+    dont_stroke = 1;
     return 0;
 }
 
@@ -138,7 +146,7 @@ static int vertex(float x, float y, float z, float u, float v)
     vertex->x = x;
     vertex->y = y;
     vertex->z = z;
-    vertex->gl_list = 0;  /* not a list */
+    vertex->gl_list = 0;	/* not a list */
     vertex->stroke = stroke_color;
     vertex->fill = fill_color;
     llist_add_tail(&vertex->list, &vertex_list_head);
@@ -214,52 +222,60 @@ static int end_shape(int end_mode)
     /* we fill the shape first, then draw the edges */
 
     /* do fill */
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glBegin(glmode);
-    llist_for_each_entry(pos, &vertex_list_head, list) {
-	glColor4f(pos->fill.r, pos->fill.g, pos->fill.b, pos->fill.a);
-	if (pos->gl_list) {
-	    glCallList(pos->gl_list);
-	} else {
-	    glVertex3f(pos->x, pos->y, pos->z);
-	}
-    }
-    glEnd();
     switch (glmode) {
-    case GL_POLYGON:
+    case GL_POINTS:
+    case GL_LINES:
+	break;
+    default:
+	if (dont_fill) {
+	    break;
+	}
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glBegin(glmode);
+	llist_for_each_entry(pos, &vertex_list_head, list) {
+	    glColor4f(pos->fill.r, pos->fill.g, pos->fill.b, pos->fill.a);
+	    if (pos->gl_list) {
+		glCallList(pos->gl_list);
+	    } else {
+		glVertex3f(pos->x, pos->y, pos->z);
+		psr_debug
+		    ("fill point: (%f, %f, %f) color: (%f, %f, %f, %f)",
+		     pos->x, pos->y, pos->z, pos->fill.r, pos->fill.g,
+		     pos->fill.b, pos->fill.a);
+	    }
+	}
+	glEnd();
+    }
+    if (glmode == GL_POLYGON) {
 	/* depends on CLOSE or not */
 	if (end_mode == OPEN) {
 	    glmode = GL_LINE_STRIP;
 	} else {
 	    glmode = GL_LINE_LOOP;
 	}
-    case GL_POINTS:
-    case GL_LINES:
-    case GL_TRIANGLES:
-    case GL_TRIANGLE_FAN:
-    case GL_TRIANGLE_STRIP:
-    case GL_QUADS:
-    case GL_QUAD_STRIP:
-	break;
-    default:
-	psr_error("Invalid internal variable: glmode (%d)."
-		  "  Something is very wrong.", glmode);
-	return -1;
     }
 
-    /* now draw the edges */
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glBegin(glmode);
-    llist_for_each_entry(pos, &vertex_list_head, list) {
-	glColor4f(pos->stroke.r, pos->stroke.g, pos->stroke.b, pos->stroke.a);
-	if (pos->gl_list) {
-	    glCallList(pos->gl_list);
-	} else {
-	    glVertex3f(pos->x, pos->y, pos->z);
+    /* do stroke */
+    if (!dont_stroke) {
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glBegin(glmode);
+	llist_for_each_entry(pos, &vertex_list_head, list) {
+	    glColor4f(pos->stroke.r, pos->stroke.g, pos->stroke.b,
+		      pos->stroke.a);
+	    if (pos->gl_list) {
+		glCallList(pos->gl_list);
+	    } else {
+		glVertex3f(pos->x, pos->y, pos->z);
+		psr_debug
+		    ("stroke point: (%f, %f, %f) color: (%f, %f, %f, %f)",
+		     pos->x, pos->y, pos->z, pos->stroke.r, pos->stroke.g,
+		     pos->stroke.b, pos->stroke.a);
+	    }
 	}
+	glEnd();
     }
-    glEnd();
 
+    /* release the resource */
     llist_for_each_entry_safe(pos, n, &vertex_list_head, list) {
 	if (pos->gl_list) {
 	    glDeleteLists(pos->gl_list, 1);
@@ -282,7 +298,7 @@ static int arc(float x, float y, float width, float height, float start,
     float ratio = width / height;
 
     gluQuadricCallback(qobj, GLU_ERROR, glu_error_handle);
-    height = height / 2; /* we need radius */
+    height = height / 2;	/* we need radius */
 
     gluQuadricNormals(qobj, GLU_NONE);
 
@@ -292,6 +308,7 @@ static int arc(float x, float y, float width, float height, float start,
     glTranslatef(x, y, 0);
     glScalef(ratio, -1, 1);
 
+    /* FIXME: check no stroke and no fill here */
     /* first pass, fill */
     gluQuadricDrawStyle(qobj, GLU_FILL);
     /* FIXME: should set the slices (20) to something that matchs the
@@ -299,17 +316,19 @@ static int arc(float x, float y, float width, float height, float start,
     gluPartialDisk(qobj, 0, height, 20, 1, start, stop - start);
 
     /* second pass, stroke */
-    glColor4f(stroke_color.r, stroke_color.g, stroke_color.b, stroke_color.a);
+    glColor4f(stroke_color.r, stroke_color.g, stroke_color.b,
+	      stroke_color.a);
     gluQuadricDrawStyle(qobj, GLU_LINE);
     gluPartialDisk(qobj, 0, height, 20, 1, start, stop - start);
 
-    glPopMatrix();  /* restore coordinates */
+    glPopMatrix();		/* restore coordinates */
     gluDeleteQuadric(qobj);
     return glCheckError();
 }
 
 static int fill(float r, float g, float b, float a)
 {
+    dont_fill = 0;
     fill_color.r = r;
     fill_color.g = g;
     fill_color.b = b;
@@ -317,10 +336,19 @@ static int fill(float r, float g, float b, float a)
     return 0;
 }
 
+static int no_fill()
+{
+    dont_fill = 1;
+    return 0;
+}
+
 int gl_init(struct psr_context *lpsr_cxt,
 	    struct psr_renderer_context *renderer_cxt)
 {
     int r = 0;
+
+    psr_debug("gl_init");
+
     glShadeModel(GL_SMOOTH);
     glClearDepth(1.0f);
     glEnable(GL_DEPTH_TEST);
@@ -337,6 +365,7 @@ int gl_init(struct psr_context *lpsr_cxt,
 
     psr_cxt = lpsr_cxt;
     renderer_cxt->stroke = stroke;
+    renderer_cxt->no_stroke = no_stroke;
     renderer_cxt->background = background;
     renderer_cxt->push_matrix = push_matrix;
     renderer_cxt->pop_matrix = pop_matrix;
@@ -347,6 +376,7 @@ int gl_init(struct psr_context *lpsr_cxt,
     renderer_cxt->vertex = vertex;
     renderer_cxt->end_shape = end_shape;
     renderer_cxt->fill = fill;
+    renderer_cxt->no_fill = no_fill;
     renderer_cxt->arc = arc;
     renderer_cxt->bezier_detail = bezier_detail;
     renderer_cxt->bezier_vertex = bezier_vertex;
@@ -362,7 +392,8 @@ int gl_reshape(int width, int height)
     const GLdouble z_near = z / 10;
     const GLdouble z_far = z * 10;
 
-    glViewport(0, 0, width, height);
+    psr_debug("gl_reshape(%d, %d), aspect %f, z_near %f, z_far %f",
+	      width, height, aspect, z_near, z_far);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -376,6 +407,8 @@ int gl_reshape(int width, int height)
     /* adjust the window to the correct position because the camera
      * sits at the origin.  tricky. */
     glTranslatef(-width / 2, -height / 2, -z);
+
+    glViewport(0, 0, width, height);
 
     return glCheckError();
 }

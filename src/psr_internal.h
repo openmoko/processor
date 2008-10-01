@@ -65,6 +65,7 @@ struct psr_renderer_context {
     int (*frame_rate) (float framerate);
     int (*cursor) (int type);
     int (*stroke) (float r, float g, float b, float a);
+    int (*no_stroke) (void);
     int (*background) (float r, float g, float b, float a);
     int (*push_matrix) (void);
     int (*pop_matrix) (void);
@@ -81,6 +82,7 @@ struct psr_renderer_context {
 			  float cx2, float cy2, float cz2,
 			  float x, float y, float z);
     int (*fill) (float r, float g, float b, float a);
+    int (*no_fill) (void);
 };
 
 #define DEFAULT_WIDTH (100)

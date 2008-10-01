@@ -7,30 +7,17 @@ static float newXmag = 0, newYmag = 0;
 
 static void setup(void)
 {
-    size(200, 200);
-    no_stroke();
+    //size(200, 200);
+    //no_stroke();
     return;
 }
 
 static void draw2d(void)
 {
-    background(0, 0, 0, 0);
-
-    push_matrix();
+    background(0.5, 0.5, 0.5, 1);
     scale(2, 2, 2);
-
-    no_fill();
-    stroke(0.3, 0.3, 0.3, 1);
-    bezier_detail(1);
-    bezier(85, 20, 0, 10, 10, 0, 90, 90, 0, 15, 80, 0);
-    stroke(0.6, 0.6, 0.6, 1);
-    bezier_detail(3);
-    bezier(85, 20, 0, 10, 10, 0, 90, 90, 0, 15, 80, 0);
-    stroke(0.9, 0.9, 0.9, 1);
-    bezier_detail(12);
-    bezier(85, 20, 0, 10, 10, 0, 90, 90, 0, 15, 80, 0);
-
-    pop_matrix();
+    translate(10, 10, 10);
+    line(0, 0, 0, width/2, height/2, 0);
     no_loop();
     return;
 }

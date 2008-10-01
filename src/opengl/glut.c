@@ -8,6 +8,7 @@ static struct psr_context *psr_cxt = NULL;
 static struct psr_renderer_context *renderer_cxt = NULL;
 static struct timespec interval = {0, 0};
 static volatile int looping = 1;
+static volatile int update_coordinates = 0;
 
 extern int gl_init(struct psr_context *psr_cxt,
 		   struct psr_renderer_context *renderer_cxt);
@@ -19,10 +20,7 @@ extern int gl_reshape(int width, int height);
 	func(##args);		 \
     }
 
-/* Subtract the `struct timespec' values X and Y,
-   storing the result in RESULT.
-   Return -1 if the difference is negative, otherwise 0.
-   -- from glibc info doc */
+/* Return -1 if the difference is negative, otherwise 0. */
 static inline int timespec_sub (
     struct timespec *sub,
     struct timespec *left,
@@ -55,27 +53,52 @@ static inline void timespec_add (
     }
 }
 
+static inline void update_display(void (*func) (void))
+{
+    static GLfloat matrix[16];
+    static int first_time = 1;
+
+    /* FIXME: fix the stupid way here */
+    psr_debug("update_display(%d)", update_coordinates);
+    if (update_coordinates) {
+	/* save coordinates here */
+	first_time = 0;
+	glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *)matrix);
+	func();
+	update_coordinates = 0;
+    } else {
+	glPushMatrix();
+	/* use saved coordinates */
+	if (!first_time) {
+	    glLoadMatrixf((GLfloat *)matrix);
+	}
+	func();
+	glPopMatrix();
+    }
+    glutSwapBuffers();
+}
+
 static void display_draw(void)
 {
-    psr_debug("display_draw");
-    psr_cxt->usr_func.draw();
-    glutSwapBuffers();
+    psr_debug("draw");
+    update_display(psr_cxt->usr_func.draw);
 }
 
 static void display_setup(void)
 {
-    psr_debug("display_setup");
+    psr_debug("setup");
     if (psr_cxt->usr_func.setup) {
-	psr_cxt->usr_func.setup();
-	glutSwapBuffers();
+	update_display(psr_cxt->usr_func.setup);
     }
     if (psr_cxt->usr_func.draw) {
+	update_coordinates = 1;
 	glutDisplayFunc(display_draw);
     }
 }
 
 static void reshape(int width, int height)
 {
+    psr_debug("reshape(%d, %d)", width, height);
     psr_cxt->update_size(width, height);
     gl_reshape(width, height);
 }
@@ -86,6 +109,12 @@ static void idle(void)
     struct timespec now;
     struct timespec diff;
     int r;
+    psr_debug("idle");
+    if (!looping) {
+	psr_debug("no loop, stop calling the idle function");
+	glutIdleFunc(NULL);
+	return;
+    }
     r = clock_gettime(CLOCK_REALTIME, &now);
     if (r) {
 	psr_system_warn(errno, "gettimeofday");
@@ -99,20 +128,19 @@ static void idle(void)
 	    psr_system_warn(errno, "nanosleep");
 	}
     }
-    glutPostRedisplay();
     timespec_add(&expire, &now, &interval);
-    if (!looping) {
-	glutIdleFunc(NULL);
-	return;
-    }
+    update_coordinates = 1;
+    glutPostRedisplay();
 }
 
 static void visible(int vis)
 {
-    psr_debug("visible");
+    /* don't loop if not visible */
     if (vis == GLUT_VISIBLE && psr_cxt->usr_func.draw) {
+	psr_debug("visible true");
 	glutIdleFunc(idle);
     } else {
+	psr_debug("visible false");
 	glutIdleFunc(NULL);
     }
 }
@@ -120,7 +148,7 @@ static void visible(int vis)
 static void keyboard(unsigned char key, int x, int y)
 {
     int keycode = NONE;		/* NONE means we don't update keycode */
-    psr_warn("keyboard");
+    psr_debug("keyboard");
     switch (key) {
     case BACKSPACE:
     case TAB:
@@ -139,7 +167,7 @@ static void keyboard(unsigned char key, int x, int y)
 /* NOTE: Does NOT support ALT, CONTROL and SHIFT */
 static void special(int key, int x, int y)
 {
-    psr_warn("special");
+    psr_debug("special");
     switch (key) {
     case GLUT_KEY_UP:
 	psr_cxt->update_key(CODED, UP);
@@ -233,7 +261,8 @@ static int loop(void)
 
 static int redraw(void)
 {
-    glutIdleFunc(idle);
+    update_coordinates = 1;
+    glutPostRedisplay();
     return 0;
 }
 
@@ -281,6 +310,7 @@ static int cursor(int type)
 int init(struct psr_context *lpsr_cxt,
 	 struct psr_renderer_context *lrenderer_cxt)
 {
+    psr_debug("module init");
     psr_cxt = lpsr_cxt;
     renderer_cxt = lrenderer_cxt;
     renderer_cxt->size = size;
@@ -296,6 +326,8 @@ int main_loop_start(void)
 {
     int argc = 1;
     char *argv[] = { "Processor" };
+
+    psr_debug("main_loop_start");
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
