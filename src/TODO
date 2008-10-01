@@ -1,3 +1,6 @@
+modify arc() to support fill and stroke.
+
+
 to add a function:
 
 processing.h (extern)

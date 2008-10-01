@@ -355,13 +355,15 @@ int gl_init(struct psr_context *lpsr_cxt,
     glClearDepth(1.0f);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
-    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_BLEND);
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //glEnable(GL_BLEND);
     glEnable(GL_POINT_SMOOTH);
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_POLYGON_SMOOTH);
     glEnable(GL_MAP1_VERTEX_3);
+    //glPointSize(1.5);
+    //glLineWidth(1.5);
     glFlush();
     r = glCheckError();
 

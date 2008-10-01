@@ -9,14 +9,17 @@ static void setup(void)
 {
     //size(200, 200);
     //no_stroke();
+    no_fill();
     return;
 }
 
 static void draw2d(void)
 {
     background(0.5, 0.5, 0.5, 1);
-    translate(10, 10, 10);
-    line(0, 0, 0, width, height, 0);
+    translate(58, 48, 0); 
+    rotate_y(0.5 / M_PI * 180);
+    box(40, 40, 40);
+    //rect(0, 0, 20, 20);
     no_loop();
     return;
 }
