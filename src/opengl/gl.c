@@ -33,6 +33,8 @@ static LLIST_HEAD(vertex_list_head);
 static int glmode = -1;
 static int bezier_detail_level;
 static int dont_fill = 0, dont_stroke = 0;
+static GLuint recorded_list = 0;
+static GLfloat recorded_modelview[16];
 
 #define glCheckError()					\
     ({							\
@@ -352,7 +354,7 @@ int gl_init(struct psr_context *lpsr_cxt,
     glShadeModel(GL_SMOOTH);
     glClearDepth(1.0f);
     glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
+    glDepthFunc(GL_LESS);
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
@@ -410,5 +412,32 @@ int gl_reshape(int width, int height)
 
     glViewport(0, 0, width, height);
 
+    return glCheckError();
+}
+
+int gl_record(void (*func) (void))
+{
+    if (recorded_list) {
+	glDeleteLists(recorded_list, 1);
+    }
+    recorded_list = glGenLists(1);
+    if (recorded_list == 0) {
+	return glCheckError();
+    }
+    glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *) recorded_modelview);
+    glNewList(recorded_list, GL_COMPILE_AND_EXECUTE);
+    func(); /* do the actual drawing */
+    glEndList();
+    return glCheckError();
+}
+
+int gl_replay(void)
+{
+    if (recorded_list) {
+	glPushMatrix();
+	glLoadMatrixf((GLfloat *) recorded_modelview);
+	glCallList(recorded_list);
+	glPopMatrix();
+    }
     return glCheckError();
 }

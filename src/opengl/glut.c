@@ -8,12 +8,19 @@ static struct psr_context *psr_cxt = NULL;
 static struct psr_renderer_context *renderer_cxt = NULL;
 static struct timespec interval = {0, 0};
 static volatile int looping = 1;
-static volatile int update_coordinates = 0;
+static volatile int first_draw = 1;
 
+
+/* functions from gl.c .  too lazy to make a header file for this */
 extern int gl_init(struct psr_context *psr_cxt,
 		   struct psr_renderer_context *renderer_cxt);
 
 extern int gl_reshape(int width, int height);
+
+extern int gl_record(void (*func) (void));
+
+extern int gl_replay(void);
+/* end functions */
 
 #define SAFE_CALL(func, args...) \
     if(func) {			 \
@@ -53,51 +60,54 @@ static inline void timespec_add (
     }
 }
 
-static inline void update_display(void (*func) (void))
+static inline void update_display()
 {
-    static GLfloat matrix[16];
-    static int first_time = 1;
+    /* display the recorded drawing.  this is called during the window
+     * manager redraw event. */
+    gl_replay();
+    glutSwapBuffers();
+}
 
-    /* FIXME: fix the stupid way here */
-    psr_debug("update_display(%d)", update_coordinates);
-    if (update_coordinates) {
-	/* save coordinates here */
-	first_time = 0;
-	glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *)matrix);
-	func();
-	update_coordinates = 0;
-    } else {
-	glPushMatrix();
-	/* use saved coordinates */
-	if (!first_time) {
-	    glLoadMatrixf((GLfloat *)matrix);
-	}
-	func();
-	glPopMatrix();
-    }
+static void display_loop_draw(void)
+{
+    psr_cxt->usr_func.draw();
     glutSwapBuffers();
 }
 
 static void display_draw(void)
 {
     psr_debug("draw");
-    update_display(psr_cxt->usr_func.draw);
+    gl_record(psr_cxt->usr_func.draw);
+    if (looping) {
+	psr_debug("set to display_loop_draw");
+	glutDisplayFunc(display_loop_draw);
+    } else {
+	psr_debug("set to update_display and set idle to NULL");
+	glutDisplayFunc(update_display);
+	glutIdleFunc(NULL);
+    }
+    glutSwapBuffers();
 }
 
 static void display_setup(void)
 {
+    /* we call setup() just once.  we 'record' it, replay it if
+     * necessary */
     psr_debug("setup");
-    if (psr_cxt->usr_func.setup) {
-	update_display(psr_cxt->usr_func.setup);
-    }
     if (psr_cxt->usr_func.draw) {
-	update_coordinates = 1;
+	psr_cxt->usr_func.setup();
 	glutDisplayFunc(display_draw);
+    } else {
+	gl_record(psr_cxt->usr_func.setup);
+	glutDisplayFunc(update_display);
     }
+    glutSwapBuffers();
 }
 
 static void reshape(int width, int height)
 {
+    /* FIXME: it seems this function will be called twice during
+     * size().  don't know if this is normal for glut. */
     psr_debug("reshape(%d, %d)", width, height);
     psr_cxt->update_size(width, height);
     gl_reshape(width, height);
@@ -109,12 +119,13 @@ static void idle(void)
     struct timespec now;
     struct timespec diff;
     int r;
-    psr_debug("idle");
+
     if (!looping) {
-	psr_debug("no loop, stop calling the idle function");
-	glutIdleFunc(NULL);
+	glutDisplayFunc(display_draw);
+	glutPostRedisplay();
 	return;
     }
+
     r = clock_gettime(CLOCK_REALTIME, &now);
     if (r) {
 	psr_system_warn(errno, "gettimeofday");
@@ -129,18 +140,15 @@ static void idle(void)
 	}
     }
     timespec_add(&expire, &now, &interval);
-    update_coordinates = 1;
     glutPostRedisplay();
 }
 
 static void visible(int vis)
 {
-    /* don't loop if not visible */
-    if (vis == GLUT_VISIBLE && psr_cxt->usr_func.draw) {
-	psr_debug("visible true");
+    /* stop looping if not visible */
+    if (vis == GLUT_VISIBLE && psr_cxt->usr_func.draw && looping) {
 	glutIdleFunc(idle);
     } else {
-	psr_debug("visible false");
 	glutIdleFunc(NULL);
     }
 }
@@ -255,13 +263,16 @@ static int no_loop(void)
 static int loop(void)
 {
     looping = 1;
-    glutIdleFunc(idle);
+    if (psr_cxt->usr_func.draw) {
+	glutDisplayFunc(display_loop_draw);
+	glutIdleFunc(idle);
+    }
     return 0;
 }
 
 static int redraw(void)
 {
-    update_coordinates = 1;
+    glutDisplayFunc(display_draw);
     glutPostRedisplay();
     return 0;
 }
@@ -328,6 +339,11 @@ int main_loop_start(void)
     char *argv[] = { "Processor" };
 
     psr_debug("main_loop_start");
+
+    if (!psr_cxt->usr_func.setup) {
+	psr_error("we need setup() at least.");
+	return -1;
+    }
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);

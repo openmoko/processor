@@ -15,9 +15,8 @@ static void setup(void)
 static void draw2d(void)
 {
     background(0.5, 0.5, 0.5, 1);
-    scale(2, 2, 2);
     translate(10, 10, 10);
-    line(0, 0, 0, width/2, height/2, 0);
+    line(0, 0, 0, width, height, 0);
     no_loop();
     return;
 }
