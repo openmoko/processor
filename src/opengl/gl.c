@@ -32,6 +32,8 @@ static LLIST_HEAD(vertex_list_head);
 
 static int glmode = -1;
 static int bezier_detail_level;
+static int sphere_detail_level;
+static GLUquadric *quad = NULL;
 static int dont_fill = 0, dont_stroke = 0;
 static GLuint recorded_list = 0;
 static GLfloat recorded_modelview[16];
@@ -97,10 +99,6 @@ static int rotate(float angle, float x, float y, float z)
 static int scale(float x, float y, float z)
 {
     glScalef(x, y, z);
-    /* FIXME: this doesn't consider the situation that we have
-     * different scales on x, y, z. */
-    glPointSize(x);
-    glLineWidth(x);
     return glCheckError();
 }
 
@@ -288,21 +286,12 @@ static int end_shape(int end_mode)
     return glCheckError();
 }
 
-static GLvoid glu_error_handle(GLenum e)
-{
-    psr_error("gluQuadric error: %s", gluErrorString(e));
-}
-
 static int arc(float x, float y, float width, float height, float start,
 	       float stop)
 {
-    GLUquadricObj *qobj = gluNewQuadric();
     float ratio = width / height;
 
-    gluQuadricCallback(qobj, GLU_ERROR, glu_error_handle);
     height = height / 2;	/* we need radius */
-
-    gluQuadricNormals(qobj, GLU_NONE);
 
     /* set coordinates.  revert y again to get the angle right.
      * set ratio to get asymmetry disk */
@@ -310,21 +299,66 @@ static int arc(float x, float y, float width, float height, float start,
     glTranslatef(x, y, 0);
     glScalef(ratio, -1, 1);
 
-    /* FIXME: check no stroke and no fill here */
-    /* first pass, fill */
-    gluQuadricDrawStyle(qobj, GLU_FILL);
-    /* FIXME: should set the slices (20) to something that matchs the
-     * size of the arc. */
-    gluPartialDisk(qobj, 0, height, 20, 1, start, stop - start);
+    if (!dont_fill) {
+	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
+	gluQuadricDrawStyle(quad, GLU_FILL);
+	/* FIXME: hardcode 30 */
+	gluPartialDisk(quad, 0, height, 30, 1, start, stop - start);
+    }
 
-    /* second pass, stroke */
-    glColor4f(stroke_color.r, stroke_color.g, stroke_color.b,
-	      stroke_color.a);
-    gluQuadricDrawStyle(qobj, GLU_LINE);
-    gluPartialDisk(qobj, 0, height, 20, 1, start, stop - start);
+    if (!dont_stroke) {
+	glColor4f(stroke_color.r, stroke_color.g, stroke_color.b, stroke_color.a);
+	gluQuadricDrawStyle(quad, GLU_LINE);
+	gluPartialDisk(quad, 0, height, 20, 1, start, stop - start);
+    }
 
     glPopMatrix();		/* restore coordinates */
-    gluDeleteQuadric(qobj);
+    return glCheckError();
+}
+
+static int sphere(float radius)
+{
+    if (!dont_fill) {
+	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
+	gluQuadricDrawStyle(quad, GLU_FILL);
+	fprintf(stderr, "%f, %d\n", radius, sphere_detail_level);
+	gluSphere(quad, radius, sphere_detail_level, sphere_detail_level);
+    }
+    return 0;
+}
+
+static int sphere_detail(int n)
+{
+    sphere_detail_level = n;
+    return 0;
+}
+
+static int stroke_weight(float width)
+{
+    glPointSize(width);
+    glLineWidth(width);
+    return glCheckError();
+}
+
+static int smooth()
+{
+    glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+    glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+    glEnable(GL_POINT_SMOOTH);
+    glEnable(GL_LINE_SMOOTH);
+    glEnable(GL_POLYGON_SMOOTH);
+    return glCheckError();
+}
+
+static int no_smooth()
+{
+    glHint(GL_POINT_SMOOTH_HINT, GL_FASTEST);
+    glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
+    glHint(GL_POLYGON_SMOOTH_HINT, GL_FASTEST);
+    glDisable(GL_POINT_SMOOTH);
+    glDisable(GL_LINE_SMOOTH);
+    glDisable(GL_POLYGON_SMOOTH);
     return glCheckError();
 }
 
@@ -344,6 +378,11 @@ static int no_fill()
     return 0;
 }
 
+static GLvoid glu_error_handle(GLenum e)
+{
+    psr_error("gluQuadric error: %s", gluErrorString(e));
+}
+
 int gl_init(struct psr_context *lpsr_cxt,
 	    struct psr_renderer_context *renderer_cxt)
 {
@@ -351,21 +390,22 @@ int gl_init(struct psr_context *lpsr_cxt,
 
     psr_debug("gl_init");
 
+    /* Note: refer to the mesa performance tips */
+
     glShadeModel(GL_SMOOTH);
     glClearDepth(1.0f);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
-    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    //glEnable(GL_BLEND);
-    glEnable(GL_POINT_SMOOTH);
-    glEnable(GL_LINE_SMOOTH);
-    glEnable(GL_POLYGON_SMOOTH);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
     glEnable(GL_MAP1_VERTEX_3);
-    //glPointSize(1.5);
-    //glLineWidth(1.5);
     glFlush();
     r = glCheckError();
+
+    quad = gluNewQuadric();
+    gluQuadricCallback(quad, GLU_ERROR, glu_error_handle);
+    gluQuadricNormals(quad, GLU_NONE);
 
     psr_cxt = lpsr_cxt;
     renderer_cxt->stroke = stroke;
@@ -379,13 +419,28 @@ int gl_init(struct psr_context *lpsr_cxt,
     renderer_cxt->begin_shape = begin_shape;
     renderer_cxt->vertex = vertex;
     renderer_cxt->end_shape = end_shape;
-    renderer_cxt->fill = fill;
-    renderer_cxt->no_fill = no_fill;
     renderer_cxt->arc = arc;
     renderer_cxt->bezier_detail = bezier_detail;
     renderer_cxt->bezier_vertex = bezier_vertex;
+    renderer_cxt->sphere = sphere;
+    renderer_cxt->sphere_detail = sphere_detail;
+    renderer_cxt->stroke_weight = stroke_weight;
+    renderer_cxt->smooth = smooth;
+    renderer_cxt->no_smooth = no_smooth;
+    renderer_cxt->fill = fill;
+    renderer_cxt->no_fill = no_fill;
 
     return r;
+}
+
+int gl_end()
+{
+    gluDeleteQuadric(quad);
+    quad = NULL;
+    if (recorded_list) {
+	glDeleteLists(recorded_list, 1);
+    }
+    return 0;
 }
 
 int gl_reshape(int width, int height)

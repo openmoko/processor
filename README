@@ -1,4 +1,13 @@
-modify arc() to support fill and stroke.
+not implemented:
+
+bezier_tangent
+bezier_point
+curve
+curve_tightness
+curve_detail
+curve_point
+curve_tangent
+
 
 
 to add a function:

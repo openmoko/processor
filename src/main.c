@@ -11,8 +11,8 @@
 struct psr_context psr_context;
 struct psr_renderer_context renderer_context;
 
-volatile int debug_level = 1 << 3 | 1 << 2;
-//volatile int debug_level = 15;
+//volatile int debug_level = 1 << 3 | 1 << 2;
+volatile int debug_level = 15;
 
 volatile char key;
 volatile int keycode;
@@ -470,6 +470,36 @@ int box(float width, float height, float depth)
     return 0;
 }
 
+int sphere(float radius)
+{
+    psr_debug("sphere(%f)", radius);
+    return renderer_context.sphere(radius);
+}
+
+int sphere_detail(int n)
+{
+    psr_debug("sphere_detail(%d)", n);
+    return renderer_context.sphere_detail(n);
+}
+
+int stroke_weight(float width)
+{
+    psr_debug("stroke_weight(%f)", width);
+    return renderer_context.stroke_weight(width);
+}
+
+int smooth(void)
+{
+    psr_debug("smooth");
+    return renderer_context.smooth();
+}
+
+int no_smooth(void)
+{
+    psr_debug("no_smooth");
+    return renderer_context.no_smooth();
+}
+
 int fill(float r, float g, float b, float a)
 {
     psr_debug("fill(%f, %f, %f, %f)", r, g, b, a);
@@ -492,6 +522,7 @@ static void default_setup(void)
     rect_mode(CORNER);
     ellipse_mode(CENTER);
     bezier_detail(20);
+    sphere_detail(30);
 }
 
 int processor_init(void)

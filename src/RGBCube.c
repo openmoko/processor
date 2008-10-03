@@ -7,19 +7,20 @@ static float newXmag = 0, newYmag = 0;
 
 static void setup(void)
 {
-    //size(200, 200);
-    //no_stroke();
-    no_fill();
+    size(200, 200);
+    no_stroke();
+    //no_fill();
+    smooth();
     return;
 }
 
 static void draw2d(void)
 {
     background(0.5, 0.5, 0.5, 1);
-    translate(58, 48, 0); 
-    rotate_y(0.5 / M_PI * 180);
-    box(40, 40, 40);
-    //rect(0, 0, 20, 20);
+    smooth();
+    ellipse(70, 48, 36, 36);
+    no_smooth();
+    ellipse(30, 48, 36, 36);
     no_loop();
     return;
 }
@@ -124,7 +125,7 @@ int main(int argc, char *argv[])
 	.key_released = NULL,
 	.key_pressed = NULL,
 	.setup = setup,
-	.draw = draw2d,
+	.draw = draw3d,
     };
     processor_init();
     processor_run(&my_func);

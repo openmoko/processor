@@ -61,6 +61,11 @@ extern int bezier(float x1, float y1, float z1,
 		  float cx2, float cy2, float cz2,
 		  float x2, float y2, float z2);
 extern int box(float width, float height, float depth);
+extern int sphere(float radius);
+extern int sphere_detail(int n);
+extern int stroke_weight(float width);
+extern int smooth(void);
+extern int no_smooth(void);
 extern int fill(float r, float g, float b, float a);
 extern int no_fill(void);
 
