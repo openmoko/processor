@@ -1,4 +1,4 @@
-not implemented:
+* not implemented:
 
 bezier_tangent
 bezier_point
@@ -9,6 +9,12 @@ curve_point
 curve_tangent
 stroke_join
 stroke_cap
+
+
+* will not implement:
+
+beginRecord, endRecord
+
 
 
 * anti-alias is not really working.

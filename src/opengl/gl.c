@@ -426,6 +426,20 @@ static int image(struct psr_image *img, float x, float y, float width,
     return glCheckError();
 }
 
+static int apply_matrix(float n11, float n12, float n13, float n14,
+			float n21, float n22, float n23, float n24,
+			float n31, float n32, float n33, float n34,
+			float n41, float n42, float n43, float n44)
+{
+    GLfloat matrix[] = {n11, n12, n13, n14,
+			n21, n22, n23, n24,
+			n31, n32, n33, n34,
+			n41, n42, n43, n44};
+
+    glMultMatrixf((GLfloat *) matrix);
+    return glCheckError();
+}
+
 static GLvoid glu_error_handle(GLenum e)
 {
     psr_error("gluQuadric error: %s", gluErrorString(e));
@@ -479,6 +493,7 @@ int gl_init(struct psr_context *lpsr_cxt,
     renderer_cxt->no_fill = no_fill;
     renderer_cxt->save = save;
     renderer_cxt->image = image;
+    renderer_cxt->apply_matrix = apply_matrix;
 
     return r;
 }

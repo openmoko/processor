@@ -219,6 +219,20 @@ int pop_matrix(void)
     return renderer_context.pop_matrix();
 }
 
+int apply_matrix(float n11, float n12, float n13, float n14,
+		 float n21, float n22, float n23, float n24,
+		 float n31, float n32, float n33, float n34,
+		 float n41, float n42, float n43, float n44)
+{
+    psr_debug("apply_matrix(%f, %f, %f, %f, %f, %f, %f, %f"
+	      ", %f, %f, %f, %f, %f, %f, %f, %f",
+	      n11, n12, n13, n14, n21, n22, n23, n24,
+	      n31, n32, n33, n34, n41, n42, n43, n44);
+    return renderer_context.apply_matrix(
+	n11, n12, n13, n14, n21, n22, n23, n24,
+	n31, n32, n33, n34, n41, n42, n43, n44);
+}
+
 int translate(float x, float y, float z)
 {
     psr_debug("translate(%f, %f, %f)", x, y, z);
