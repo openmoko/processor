@@ -37,6 +37,7 @@ static GLUquadric *quad = NULL;
 static int dont_fill = 0, dont_stroke = 0;
 static GLuint recorded_list = 0;
 static GLfloat recorded_modelview[16];
+static int g_width, g_height;
 
 #define glCheckError()					\
     ({							\
@@ -307,7 +308,8 @@ static int arc(float x, float y, float width, float height, float start,
     }
 
     if (!dont_stroke) {
-	glColor4f(stroke_color.r, stroke_color.g, stroke_color.b, stroke_color.a);
+	glColor4f(stroke_color.r, stroke_color.g, stroke_color.b,
+		  stroke_color.a);
 	gluQuadricDrawStyle(quad, GLU_LINE);
 	gluPartialDisk(quad, 0, height, 20, 1, start, stop - start);
     }
@@ -378,6 +380,44 @@ static int no_fill()
     return 0;
 }
 
+/** notice: since we don't deal with file format here, we return the
+ * memory block for the upper level to handle.  upper level must free
+ * this block of memory. */
+static int save(struct psr_image *img)
+{
+    int r;
+    void *saved_image = malloc(sizeof(GLubyte) * 4 * g_width * g_height);
+    glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE,
+		 saved_image);
+    r = glCheckError();
+    if (r) {
+	/* something wrong */
+	free(saved_image);
+	return r;
+    }
+    img->width = g_width;
+    img->height = g_height;
+    img->data = saved_image;
+    return 0;
+}
+
+static int image(struct psr_image *img, float x, float y, float width,
+		 float height)
+{
+    if (width == 0 || height == 0) {
+	/* don't resize */
+	glRasterPos2f(x, y);
+	glDrawPixels(img->width, img->height, GL_RGBA, GL_UNSIGNED_BYTE,
+		     img->data);
+    } else {
+	glRasterPos2f(x, y);
+	glPixelZoom(width/img->width, height/img->height);
+	glDrawPixels(img->width, img->height, GL_RGBA, GL_UNSIGNED_BYTE,
+		     img->data);
+    }
+    return glCheckError();
+}
+
 static GLvoid glu_error_handle(GLenum e)
 {
     psr_error("gluQuadric error: %s", gluErrorString(e));
@@ -429,6 +469,8 @@ int gl_init(struct psr_context *lpsr_cxt,
     renderer_cxt->no_smooth = no_smooth;
     renderer_cxt->fill = fill;
     renderer_cxt->no_fill = no_fill;
+    renderer_cxt->save = save;
+    renderer_cxt->image = image;
 
     return r;
 }
@@ -453,6 +495,9 @@ int gl_reshape(int width, int height)
 
     psr_debug("gl_reshape(%d, %d), aspect %f, z_near %f, z_far %f",
 	      width, height, aspect, z_near, z_far);
+
+    g_width = width;
+    g_height = height;
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -483,7 +528,7 @@ int gl_record(void (*func) (void))
     }
     glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *) recorded_modelview);
     glNewList(recorded_list, GL_COMPILE_AND_EXECUTE);
-    func(); /* do the actual drawing */
+    func();			/* do the actual drawing */
     glEndList();
     return glCheckError();
 }

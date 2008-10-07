@@ -88,6 +88,9 @@ struct psr_renderer_context {
     int (*no_smooth) (void);
     int (*fill) (float r, float g, float b, float a);
     int (*no_fill) (void);
+    int (*save) (struct psr_image *img);
+    int (*image) (struct psr_image *img, float x, float y,
+		  float width, float height);
 };
 
 #define DEFAULT_WIDTH (100)

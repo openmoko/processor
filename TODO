@@ -1,2 +1,15 @@
+not implemented:
+
+bezier_tangent
+bezier_point
+curve
+curve_tightness
+curve_detail
+curve_point
+curve_tangent
+stroke_join
+stroke_cap
+
+
 * anti-alias is not really working.
 * 

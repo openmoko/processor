@@ -12,6 +12,13 @@ struct psr_usr_func {
     void (*draw) (void);
 };
 
+/** this struct saves images in RGBA mode, each pixel is 32 bits */
+struct psr_image {
+    int width;          /**< image width */
+    int height;         /**< image height */
+    void *data;         /**< data block */
+};
+
 /* constants */
 
 #include <math.h>
