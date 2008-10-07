@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
+#include <string.h>
 
 #include "psr_internal.h"
 #include "linux_list.h"
@@ -386,8 +387,8 @@ static int no_fill()
 static int save(struct psr_image *img)
 {
     int r;
-    void *saved_image = malloc(sizeof(GLubyte) * 4 * g_width * g_height);
-    glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE,
+    void *saved_image = malloc(sizeof(GLubyte) * 3 * g_width * g_height);
+    glReadPixels(0, 0, g_width, g_height, GL_RGB, GL_UNSIGNED_BYTE,
 		 saved_image);
     r = glCheckError();
     if (r) {
@@ -404,17 +405,24 @@ static int save(struct psr_image *img)
 static int image(struct psr_image *img, float x, float y, float width,
 		 float height)
 {
+    glPushMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, g_width, 0, g_height);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
     if (width == 0 || height == 0) {
 	/* don't resize */
 	glRasterPos2f(x, y);
-	glDrawPixels(img->width, img->height, GL_RGBA, GL_UNSIGNED_BYTE,
+	glDrawPixels(img->width, img->height, GL_RGB, GL_UNSIGNED_BYTE,
 		     img->data);
     } else {
 	glRasterPos2f(x, y);
 	glPixelZoom(width/img->width, height/img->height);
-	glDrawPixels(img->width, img->height, GL_RGBA, GL_UNSIGNED_BYTE,
+	glDrawPixels(img->width, img->height, GL_RGB, GL_UNSIGNED_BYTE,
 		     img->data);
     }
+    glPopMatrix();
     return glCheckError();
 }
 
@@ -499,10 +507,11 @@ int gl_reshape(int width, int height)
     g_width = width;
     g_height = height;
 
+    glViewport(0, 0, width, height);
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(fov, aspect, z_near, z_far);
-    //glOrtho(-width/2, width/2, -height/2, height/2, -1000, 1000);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -511,8 +520,6 @@ int gl_reshape(int width, int height)
     /* adjust the window to the correct position because the camera
      * sits at the origin.  tricky. */
     glTranslatef(-width / 2, -height / 2, -z);
-
-    glViewport(0, 0, width, height);
 
     return glCheckError();
 }

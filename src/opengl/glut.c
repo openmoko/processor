@@ -9,7 +9,7 @@ static struct psr_renderer_context *renderer_cxt = NULL;
 static struct timespec interval = {0, 0};
 static volatile int looping = 1;
 static volatile int first_draw = 1;
-
+static struct psr_image saved_img = {0, 0, NULL};
 
 /* functions from gl.c .  too lazy to make a header file for this */
 extern int gl_init(struct psr_context *psr_cxt,
@@ -62,9 +62,10 @@ static inline void timespec_add (
 
 static inline void update_display()
 {
-    /* display the recorded drawing.  this is called during the window
+    /* display the saved drawing.  this is called during the window
      * manager redraw event. */
-    gl_replay();
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    renderer_cxt->image(&saved_img, 0, 0, 0, 0);
     glutSwapBuffers();
 }
 
@@ -74,10 +75,19 @@ static void display_loop_draw(void)
     glutSwapBuffers();
 }
 
+static inline void save_current_drawing(void)
+{
+    if (saved_img.data) {
+	free(saved_img.data);
+    }
+    renderer_cxt->save(&saved_img);
+}
+
 static void display_draw(void)
 {
     psr_debug("draw");
-    gl_record(psr_cxt->usr_func.draw);
+    psr_cxt->usr_func.draw();
+    save_current_drawing();
     if (looping) {
 	psr_debug("set to display_loop_draw");
 	glutDisplayFunc(display_loop_draw);
@@ -98,7 +108,8 @@ static void display_setup(void)
 	psr_cxt->usr_func.setup();
 	glutDisplayFunc(display_draw);
     } else {
-	gl_record(psr_cxt->usr_func.setup);
+	psr_cxt->usr_func.setup();
+	save_current_drawing();
 	glutDisplayFunc(update_display);
     }
     glutSwapBuffers();

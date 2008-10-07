@@ -512,6 +512,18 @@ int no_fill(void)
     return renderer_context.no_fill();
 }
 
+int save(struct psr_image *img)
+{
+    psr_debug("save");
+    return renderer_context.save(img);
+}
+
+int image(struct psr_image *img, float x, float y, float width, float height)
+{
+    psr_debug("image(%p, %f, %f, %f, %f)", img, x, y, width, height);
+    return renderer_context.image(img, x, y, width, height);
+}
+
 /* default setup */
 static void default_setup(void)
 {

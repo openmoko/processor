@@ -68,6 +68,8 @@ extern int smooth(void);
 extern int no_smooth(void);
 extern int fill(float r, float g, float b, float a);
 extern int no_fill(void);
+extern int save(struct psr_image *img);
+extern int image(struct psr_image *img, float x, float y, float width, float height);
 
 extern int processor_init(void);
 extern int processor_run(struct psr_usr_func *usr_func);
