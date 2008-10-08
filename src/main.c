@@ -233,6 +233,18 @@ int apply_matrix(float n11, float n12, float n13, float n14,
 	n31, n32, n33, n34, n41, n42, n43, n44);
 }
 
+int reset_matrix(void)
+{
+    psr_debug("reset_matrix");
+    return renderer_context.reset_matrix();
+}
+
+int print_matrix(void)
+{
+    psr_debug("print_matrix");
+    return renderer_context.print_matrix();
+}
+
 int translate(float x, float y, float z)
 {
     psr_debug("translate(%f, %f, %f)", x, y, z);
@@ -463,6 +475,7 @@ int bezier(float x1, float y1, float z1,
     return end_shape(OPEN);
 }
 
+/** FIXME: not finished yet. */
 int box(float width, float height, float depth)
 {
     push_matrix();
@@ -528,7 +541,7 @@ int no_fill(void)
 
 int save(struct psr_image *img)
 {
-    psr_debug("save");
+    psr_debug("save(%p)", img);
     return renderer_context.save(img);
 }
 
@@ -541,14 +554,15 @@ int image(struct psr_image *img, float x, float y, float width, float height)
 /* default setup */
 static void default_setup(void)
 {
-    background(1, 1, 1, 1);
-    stroke(0, 0, 0, 1);
-    fill(1, 1, 1, 1);
+    //size(100, 100);
     frame_rate(60);
     rect_mode(CORNER);
     ellipse_mode(CENTER);
     bezier_detail(20);
     sphere_detail(30);
+    stroke(0, 0, 0, 1);
+    fill(1, 1, 1, 1);
+    background(0.8, 0.8, 0.8, 1);
 }
 
 int processor_init(void)

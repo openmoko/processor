@@ -37,7 +37,7 @@ static int sphere_detail_level;
 static GLUquadric *quad = NULL;
 static int dont_fill = 0, dont_stroke = 0;
 static GLuint recorded_list = 0;
-static GLfloat recorded_modelview[16];
+static GLfloat saved_modelview[16];
 static int g_width, g_height;
 
 #define glCheckError()					\
@@ -61,7 +61,7 @@ static int stroke(float r, float g, float b, float a)
     return 0;
 }
 
-static int no_stroke()
+static int no_stroke(void)
 {
     dont_stroke = 1;
     return 0;
@@ -311,7 +311,7 @@ static int arc(float x, float y, float width, float height, float start,
     if (!dont_stroke) {
 	glColor4f(stroke_color.r, stroke_color.g, stroke_color.b,
 		  stroke_color.a);
-	gluQuadricDrawStyle(quad, GLU_LINE);
+	gluQuadricDrawStyle(quad, GLU_SILHOUETTE);
 	gluPartialDisk(quad, 0, height, 20, 1, start, stop - start);
     }
 
@@ -324,7 +324,6 @@ static int sphere(float radius)
     if (!dont_fill) {
 	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
 	gluQuadricDrawStyle(quad, GLU_FILL);
-	fprintf(stderr, "%f, %d\n", radius, sphere_detail_level);
 	gluSphere(quad, radius, sphere_detail_level, sphere_detail_level);
     }
     return 0;
@@ -343,7 +342,7 @@ static int stroke_weight(float width)
     return glCheckError();
 }
 
-static int smooth()
+static int smooth(void)
 {
     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
@@ -354,7 +353,7 @@ static int smooth()
     return glCheckError();
 }
 
-static int no_smooth()
+static int no_smooth(void)
 {
     glHint(GL_POINT_SMOOTH_HINT, GL_FASTEST);
     glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
@@ -375,7 +374,7 @@ static int fill(float r, float g, float b, float a)
     return 0;
 }
 
-static int no_fill()
+static int no_fill(void)
 {
     dont_fill = 1;
     return 0;
@@ -399,6 +398,10 @@ static int save(struct psr_image *img)
     img->width = g_width;
     img->height = g_height;
     img->data = saved_image;
+//    FILE *fp = fopen("in", "w");
+//    psr_debug("wrote: %d", (int) fwrite(img->data, sizeof(GLubyte) * 3,
+//					img->width * img->height, fp));
+//    fclose(fp);
     return 0;
 }
 
@@ -426,6 +429,21 @@ static int image(struct psr_image *img, float x, float y, float width,
     return glCheckError();
 }
 
+static int print_matrix(void)
+{
+    GLfloat matrix[16];
+    glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *) matrix);
+    printf("%10.4f, %10.4f, %10.4f, %10.4f, \n"
+	   "%10.4f, %10.4f, %10.4f, %10.4f, \n"
+	   "%10.4f, %10.4f, %10.4f, %10.4f, \n"
+	   "%10.4f, %10.4f, %10.4f, %10.4f, \n",
+	   matrix[0], matrix[4], matrix[8], matrix[12],
+	   -matrix[1], -matrix[5], -matrix[9], -matrix[13],
+	   matrix[2], matrix[6], matrix[10], matrix[14],
+	   matrix[3], matrix[7], matrix[11], matrix[15]);
+    return 0;
+}
+
 static int apply_matrix(float n11, float n12, float n13, float n14,
 			float n21, float n22, float n23, float n24,
 			float n31, float n32, float n33, float n34,
@@ -437,6 +455,12 @@ static int apply_matrix(float n11, float n12, float n13, float n14,
 			n41, n42, n43, n44};
 
     glMultMatrixf((GLfloat *) matrix);
+    return glCheckError();
+}
+
+static int reset_matrix(void)
+{
+    glLoadIdentity();
     return glCheckError();
 }
 
@@ -454,7 +478,6 @@ int gl_init(struct psr_context *lpsr_cxt,
 
     /* Note: refer to the mesa performance tips */
 
-    glShadeModel(GL_SMOOTH);
     glClearDepth(1.0f);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
@@ -494,11 +517,13 @@ int gl_init(struct psr_context *lpsr_cxt,
     renderer_cxt->save = save;
     renderer_cxt->image = image;
     renderer_cxt->apply_matrix = apply_matrix;
+    renderer_cxt->reset_matrix = reset_matrix;
+    renderer_cxt->print_matrix = print_matrix;
 
     return r;
 }
 
-int gl_end()
+int gl_end(void)
 {
     gluDeleteQuadric(quad);
     quad = NULL;
@@ -527,6 +552,7 @@ int gl_reshape(int width, int height)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(fov, aspect, z_near, z_far);
+    //glOrtho(-width/2, width/2, -height/2, height/2, -1000, 1000);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -534,7 +560,7 @@ int gl_reshape(int width, int height)
     glScalef(1, -1, 1);
     /* adjust the window to the correct position because the camera
      * sits at the origin.  tricky. */
-    glTranslatef(-width / 2, -height / 2, -z);
+    glTranslatef(-width/2, -height/2, -z);
 
     return glCheckError();
 }
@@ -548,7 +574,7 @@ int gl_record(void (*func) (void))
     if (recorded_list == 0) {
 	return glCheckError();
     }
-    glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *) recorded_modelview);
+    glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *) saved_modelview);
     glNewList(recorded_list, GL_COMPILE_AND_EXECUTE);
     func();			/* do the actual drawing */
     glEndList();
@@ -559,7 +585,7 @@ int gl_replay(void)
 {
     if (recorded_list) {
 	glPushMatrix();
-	glLoadMatrixf((GLfloat *) recorded_modelview);
+	glLoadMatrixf((GLfloat *) saved_modelview);
 	glCallList(recorded_list);
 	glPopMatrix();
     }

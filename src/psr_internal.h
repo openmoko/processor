@@ -73,6 +73,8 @@ struct psr_renderer_context {
 			 float n21, float n22, float n23, float n24,
 			 float n31, float n32, float n33, float n34,
 			 float n41, float n42, float n43, float n44);
+    int (*reset_matrix) (void);
+    int (*print_matrix) (void);
     int (*translate) (float x, float y, float z);
     int (*rotate) (float angle, float x, float y, float z);
     int (*scale) (float x, float y, float z);

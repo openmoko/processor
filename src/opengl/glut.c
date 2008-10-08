@@ -60,10 +60,11 @@ static inline void timespec_add (
     }
 }
 
-static inline void update_display()
+static void update_display(void)
 {
     /* display the saved drawing.  this is called during the window
      * manager redraw event. */
+    psr_debug("update_display()");
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     renderer_cxt->image(&saved_img, 0, 0, 0, 0);
     glutSwapBuffers();
@@ -77,6 +78,7 @@ static void display_loop_draw(void)
 
 static inline void save_current_drawing(void)
 {
+    psr_debug("save_current_drawing()");
     if (saved_img.data) {
 	free(saved_img.data);
     }
@@ -85,14 +87,14 @@ static inline void save_current_drawing(void)
 
 static void display_draw(void)
 {
-    psr_debug("draw");
+    psr_debug("display_draw");
     psr_cxt->usr_func.draw();
     save_current_drawing();
     if (looping) {
-	psr_debug("set to display_loop_draw");
+	psr_debug("use display_loop_draw");
 	glutDisplayFunc(display_loop_draw);
     } else {
-	psr_debug("set to update_display and set idle to NULL");
+	psr_debug("use update_display and set idle to NULL");
 	glutDisplayFunc(update_display);
 	glutIdleFunc(NULL);
     }
@@ -103,7 +105,8 @@ static void display_setup(void)
 {
     /* we call setup() just once.  we 'record' it, replay it if
      * necessary */
-    psr_debug("setup");
+    psr_debug("display_setup");
+    psr_cxt->default_setup();
     if (psr_cxt->usr_func.draw) {
 	psr_cxt->usr_func.setup();
 	glutDisplayFunc(display_draw);
@@ -372,7 +375,6 @@ int main_loop_start(void)
     glutPassiveMotionFunc(passive_motion);
     glutVisibilityFunc(visible);
 
-    psr_cxt->default_setup();
     glutMainLoop();
     return 0;
 }
