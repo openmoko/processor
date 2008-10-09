@@ -22,43 +22,10 @@ extern int gl_record(void (*func) (void));
 extern int gl_replay(void);
 /* end functions */
 
-#define SAFE_CALL(func, args...) \
-    if(func) {			 \
-	func(##args);		 \
-    }
 
-/* Return -1 if the difference is negative, otherwise 0. */
-static inline int timespec_sub (
-    struct timespec *sub,
-    struct timespec *left,
-    struct timespec *right)
-{
-    sub->tv_sec = left->tv_sec - right->tv_sec;
-    sub->tv_nsec = left->tv_nsec - right->tv_nsec;
-    if (sub->tv_nsec < 0) {
-	--sub->tv_sec;
-	sub->tv_nsec += 1000000000;
-    }
-    if (left->tv_sec < right ->tv_sec ||
-	(left->tv_sec == right->tv_sec &&
-	 left->tv_nsec < right->tv_nsec)) {
-	return -1;
-    }
-    return 0;
-}
-
-static inline void timespec_add (
-    struct timespec *sum,
-    const struct timespec *left,
-    const struct timespec *right)
-{
-    sum->tv_sec = left->tv_sec + right->tv_sec;
-    sum->tv_nsec = left->tv_nsec + right->tv_nsec;
-    if (sum->tv_nsec >= 1000000000) {
-	++sum->tv_sec;
-	sum->tv_nsec -= 1000000000;
-    }
-}
+/******************************************************************** 
+ * For GLUT
+ ********************************************************************/
 
 static void update_display(void)
 {
@@ -124,6 +91,39 @@ static void reshape(int width, int height)
     psr_debug("reshape(%d, %d)", width, height);
     psr_cxt->update_size(width, height);
     gl_reshape(width, height);
+}
+
+/* Return -1 if the difference is negative, otherwise 0. */
+static inline int timespec_sub (
+    struct timespec *sub,
+    struct timespec *left,
+    struct timespec *right)
+{
+    sub->tv_sec = left->tv_sec - right->tv_sec;
+    sub->tv_nsec = left->tv_nsec - right->tv_nsec;
+    if (sub->tv_nsec < 0) {
+	--sub->tv_sec;
+	sub->tv_nsec += 1000000000;
+    }
+    if (left->tv_sec < right ->tv_sec ||
+	(left->tv_sec == right->tv_sec &&
+	 left->tv_nsec < right->tv_nsec)) {
+	return -1;
+    }
+    return 0;
+}
+
+static inline void timespec_add (
+    struct timespec *sum,
+    const struct timespec *left,
+    const struct timespec *right)
+{
+    sum->tv_sec = left->tv_sec + right->tv_sec;
+    sum->tv_nsec = left->tv_nsec + right->tv_nsec;
+    if (sum->tv_nsec >= 1000000000) {
+	++sum->tv_sec;
+	sum->tv_nsec -= 1000000000;
+    }
 }
 
 static void idle(void)
@@ -226,6 +226,11 @@ static void special(int key, int x, int y)
     return;
 }
 
+#define SAFE_CALL(func, args...) \
+    if(func) {			 \
+	func(##args);		 \
+    }
+
 static void mouse(int button, int state, int x, int y)
 {
     switch (button) {
@@ -261,6 +266,11 @@ static void passive_motion(int x, int y)
     SAFE_CALL(psr_cxt->usr_func.mouse_moved, );
 }
 
+
+/******************************************************************** 
+ * Structure functions
+ ********************************************************************/
+
 static int size(int width, int height)
 {
     glutReshapeWindow(width, height);
@@ -289,6 +299,11 @@ static int redraw(void)
     glutPostRedisplay();
     return 0;
 }
+
+
+/******************************************************************** 
+ * Environment functions
+ ********************************************************************/
 
 static int frame_rate(float framerate)
 {
@@ -330,6 +345,11 @@ static int cursor(int type)
     glutSetCursor(type);
     return 0;
 }
+
+
+/******************************************************************** 
+ * Other functions
+ ********************************************************************/
 
 int init(struct psr_context *lpsr_cxt,
 	 struct psr_renderer_context *lrenderer_cxt)

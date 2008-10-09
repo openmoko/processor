@@ -51,56 +51,38 @@ static int g_width, g_height;
 	r;						\
     })
 
-static int stroke(float r, float g, float b, float a)
-{
-    dont_stroke = 0;
-    stroke_color.r = r;
-    stroke_color.g = g;
-    stroke_color.b = b;
-    stroke_color.a = a;
-    return 0;
-}
+/******************************************************************** 
+ * Shape functions
+ ********************************************************************/
 
-static int no_stroke(void)
+static int arc(float x, float y, float width, float height, float start,
+	       float stop)
 {
-    dont_stroke = 1;
-    return 0;
-}
+    float ratio = width / height;
 
-static int background(float r, float g, float b, float a)
-{
-    glClearColor(r, g, b, a);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    return glCheckError();
-}
+    height = height / 2;	/* we need radius */
 
-static int push_matrix(void)
-{
+    /* set coordinates.  revert y again to get the angle right.
+     * set ratio to get asymmetry disk */
     glPushMatrix();
-    return glCheckError();
-}
+    glTranslatef(x, y, 0);
+    glScalef(ratio, -1, 1);
 
-static int pop_matrix(void)
-{
-    glPopMatrix();
-    return glCheckError();
-}
+    if (!dont_fill) {
+	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
+	gluQuadricDrawStyle(quad, GLU_FILL);
+	/* FIXME: hardcode 30 */
+	gluPartialDisk(quad, 0, height, 30, 1, start, stop - start);
+    }
 
-static int translate(float x, float y, float z)
-{
-    glTranslatef(x, y, z);
-    return glCheckError();
-}
+    if (!dont_stroke) {
+	glColor4f(stroke_color.r, stroke_color.g, stroke_color.b,
+		  stroke_color.a);
+	gluQuadricDrawStyle(quad, GLU_SILHOUETTE);
+	gluPartialDisk(quad, 0, height, 20, 1, start, stop - start);
+    }
 
-static int rotate(float angle, float x, float y, float z)
-{
-    glRotatef(angle * 180 / M_PI, x, y, z);
-    return glCheckError();
-}
-
-static int scale(float x, float y, float z)
-{
-    glScalef(x, y, z);
+    glPopMatrix();		/* restore coordinates */
     return glCheckError();
 }
 
@@ -288,37 +270,6 @@ static int end_shape(int end_mode)
     return glCheckError();
 }
 
-static int arc(float x, float y, float width, float height, float start,
-	       float stop)
-{
-    float ratio = width / height;
-
-    height = height / 2;	/* we need radius */
-
-    /* set coordinates.  revert y again to get the angle right.
-     * set ratio to get asymmetry disk */
-    glPushMatrix();
-    glTranslatef(x, y, 0);
-    glScalef(ratio, -1, 1);
-
-    if (!dont_fill) {
-	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
-	gluQuadricDrawStyle(quad, GLU_FILL);
-	/* FIXME: hardcode 30 */
-	gluPartialDisk(quad, 0, height, 30, 1, start, stop - start);
-    }
-
-    if (!dont_stroke) {
-	glColor4f(stroke_color.r, stroke_color.g, stroke_color.b,
-		  stroke_color.a);
-	gluQuadricDrawStyle(quad, GLU_SILHOUETTE);
-	gluPartialDisk(quad, 0, height, 20, 1, start, stop - start);
-    }
-
-    glPopMatrix();		/* restore coordinates */
-    return glCheckError();
-}
-
 static int box(float width, float height, float depth)
 {
     const float w = width/2, h = height/2, d = depth/2;
@@ -388,7 +339,6 @@ static int box(float width, float height, float depth)
     return glCheckError();
 }
 
-
 static int sphere(float radius)
 {
     if (!dont_fill) {
@@ -434,21 +384,10 @@ static int no_smooth(void)
     return glCheckError();
 }
 
-static int fill(float r, float g, float b, float a)
-{
-    dont_fill = 0;
-    fill_color.r = r;
-    fill_color.g = g;
-    fill_color.b = b;
-    fill_color.a = a;
-    return 0;
-}
 
-static int no_fill(void)
-{
-    dont_fill = 1;
-    return 0;
-}
+/******************************************************************** 
+ * Output functions
+ ********************************************************************/
 
 /** notice: since we don't deal with file format here, we return the
  * memory block for the upper level to handle.  upper level must free
@@ -475,27 +414,38 @@ static int save(struct psr_image *img)
     return 0;
 }
 
-static int image(struct psr_image *img, float x, float y, float width,
-		 float height)
+
+/******************************************************************** 
+ * Transform functions
+ ********************************************************************/
+
+static int push_matrix(void)
 {
     glPushMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(0, g_width, 0, g_height);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    if (width == 0 || height == 0) {
-	/* don't resize */
-	glRasterPos2f(x, y);
-	glDrawPixels(img->width, img->height, GL_RGB, GL_UNSIGNED_BYTE,
-		     img->data);
-    } else {
-	glRasterPos2f(x, y);
-	glPixelZoom(width/img->width, height/img->height);
-	glDrawPixels(img->width, img->height, GL_RGB, GL_UNSIGNED_BYTE,
-		     img->data);
-    }
+    return glCheckError();
+}
+
+static int pop_matrix(void)
+{
     glPopMatrix();
+    return glCheckError();
+}
+
+static int translate(float x, float y, float z)
+{
+    glTranslatef(x, y, z);
+    return glCheckError();
+}
+
+static int rotate(float angle, float x, float y, float z)
+{
+    glRotatef(angle * 180 / M_PI, x, y, z);
+    return glCheckError();
+}
+
+static int scale(float x, float y, float z)
+{
+    glScalef(x, y, z);
     return glCheckError();
 }
 
@@ -533,6 +483,84 @@ static int reset_matrix(void)
     glLoadIdentity();
     return glCheckError();
 }
+
+
+/******************************************************************** 
+ * Color functions
+ ********************************************************************/
+
+static int stroke(float r, float g, float b, float a)
+{
+    dont_stroke = 0;
+    stroke_color.r = r;
+    stroke_color.g = g;
+    stroke_color.b = b;
+    stroke_color.a = a;
+    return 0;
+}
+
+static int no_stroke(void)
+{
+    dont_stroke = 1;
+    return 0;
+}
+
+static int fill(float r, float g, float b, float a)
+{
+    dont_fill = 0;
+    fill_color.r = r;
+    fill_color.g = g;
+    fill_color.b = b;
+    fill_color.a = a;
+    return 0;
+}
+
+static int no_fill(void)
+{
+    dont_fill = 1;
+    return 0;
+}
+
+static int background(float r, float g, float b, float a)
+{
+    glClearColor(r, g, b, a);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    return glCheckError();
+}
+
+
+/******************************************************************** 
+ * Image functions
+ ********************************************************************/
+
+static int image(struct psr_image *img, float x, float y, float width,
+		 float height)
+{
+    glPushMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, g_width, 0, g_height);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    if (width == 0 || height == 0) {
+	/* don't resize */
+	glRasterPos2f(x, y);
+	glDrawPixels(img->width, img->height, GL_RGB, GL_UNSIGNED_BYTE,
+		     img->data);
+    } else {
+	glRasterPos2f(x, y);
+	glPixelZoom(width/img->width, height/img->height);
+	glDrawPixels(img->width, img->height, GL_RGB, GL_UNSIGNED_BYTE,
+		     img->data);
+    }
+    glPopMatrix();
+    return glCheckError();
+}
+
+
+/******************************************************************** 
+ * Other functions
+ ********************************************************************/
 
 static GLvoid glu_error_handle(GLenum e)
 {
