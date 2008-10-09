@@ -87,6 +87,7 @@ struct psr_renderer_context {
     int (*bezier_vertex) (float cx1, float cy1, float cz1,
 			  float cx2, float cy2, float cz2,
 			  float x, float y, float z);
+    int (*box) (float width, float height, float depth);
     int (*sphere) (float radius);
     int (*sphere_detail) (int n);
     int (*stroke_weight) (float width);

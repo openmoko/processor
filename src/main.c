@@ -478,23 +478,8 @@ int bezier(float x1, float y1, float z1,
 /** FIXME: not finished yet. */
 int box(float width, float height, float depth)
 {
-    push_matrix();
-    translate(-width/2, -height/2, -depth/2);
-    begin_shape(QUAD_STRIP);
-    vertex(0, 0, 0, 0, 0);
-    vertex(width, 0, 0, 0, 0);
-    vertex(0, height, 0, 0, 0);
-    vertex(width, height, 0, 0, 0);
-    vertex(0, height, depth, 0, 0);
-    vertex(width, height, depth, 0, 0);
-    vertex(0, 0, depth, 0, 0);
-    vertex(width, 0, depth, 0, 0);
-    vertex(0, 0, 0, 0, 0);
-    vertex(width, 0, 0, 0, 0);
-    end_shape(CLOSE);
-    pop_matrix();
-
-    return 0;
+    psr_debug("box(%f, %f, %f)", width, height, depth);
+    return renderer_context.box(width, height, depth);
 }
 
 int sphere(float radius)

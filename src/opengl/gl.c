@@ -319,6 +319,76 @@ static int arc(float x, float y, float width, float height, float start,
     return glCheckError();
 }
 
+static int box(float width, float height, float depth)
+{
+    const float w = width/2, h = height/2, d = depth/2;
+
+    if (!dont_fill) {
+	glColor4f(fill_color.r, fill_color.g, fill_color.b, fill_color.a);
+	glBegin(GL_QUADS);
+	/* back */
+	glVertex3f(-w, -h, -d);
+	glVertex3f(-w,  h, -d);
+	glVertex3f( w,  h, -d);
+	glVertex3f( w, -h, -d);
+	/* left */
+	glVertex3f(-w, -h, -d);
+	glVertex3f(-w, -h,  d);
+	glVertex3f(-w,  h,  d);
+	glVertex3f(-w,  h, -d);
+	/* right */
+	glVertex3f( w, -h, -d);
+	glVertex3f( w, -h,  d);
+	glVertex3f( w,  h,  d);
+	glVertex3f( w,  h, -d);
+	/* front */
+	glVertex3f(-w, -h,  d);
+	glVertex3f(-w,  h,  d);
+	glVertex3f( w,  h,  d);
+	glVertex3f( w, -h,  d);
+	/* top */
+	glVertex3f(-w, -h, -d);
+	glVertex3f(-w, -h,  d);
+	glVertex3f( w, -h,  d);
+	glVertex3f( w, -h, -d);
+	/* bottom */
+	glVertex3f(-w,  h, -d);
+	glVertex3f(-w,  h,  d);
+	glVertex3f( w,  h,  d);
+	glVertex3f( w,  h, -d);
+	glEnd();
+    }
+    if (!dont_stroke) {
+	glColor4f(stroke_color.r, stroke_color.g, stroke_color.b, stroke_color.a);
+	glDisable(GL_DEPTH_TEST);
+	glBegin(GL_LINE_LOOP);
+	glVertex3f(-w, -h, -d);
+	glVertex3f( w, -h, -d);
+	glVertex3f( w,  h, -d);
+	glVertex3f(-w,  h, -d);
+	glEnd();
+	glBegin(GL_LINE_LOOP);
+	glVertex3f(-w, -h,  d);
+	glVertex3f( w, -h,  d);
+	glVertex3f( w,  h,  d);
+	glVertex3f(-w,  h,  d);
+	glEnd();
+	glBegin(GL_LINES);
+	glVertex3f(-w, -h,  d);
+	glVertex3f(-w, -h, -d);
+	glVertex3f( w, -h,  d);
+	glVertex3f( w, -h, -d);
+	glVertex3f( w,  h,  d);
+	glVertex3f( w,  h, -d);
+	glVertex3f(-w,  h,  d);
+	glVertex3f(-w,  h, -d);
+	glEnd();
+	glEnable(GL_DEPTH_TEST);
+    }
+    return glCheckError();
+}
+
+
 static int sphere(float radius)
 {
     if (!dont_fill) {
@@ -507,6 +577,7 @@ int gl_init(struct psr_context *lpsr_cxt,
     renderer_cxt->arc = arc;
     renderer_cxt->bezier_detail = bezier_detail;
     renderer_cxt->bezier_vertex = bezier_vertex;
+    renderer_cxt->box = box;
     renderer_cxt->sphere = sphere;
     renderer_cxt->sphere_detail = sphere_detail;
     renderer_cxt->stroke_weight = stroke_weight;
