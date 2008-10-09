@@ -94,8 +94,9 @@ static void display_draw(void)
 	psr_debug("use display_loop_draw");
 	glutDisplayFunc(display_loop_draw);
     } else {
-	psr_debug("use update_display and set idle to NULL");
-	glutDisplayFunc(update_display);
+	//psr_debug("use update_display and set idle to NULL");
+	//glutDisplayFunc(update_display);
+	glutDisplayFunc(display_draw);
 	glutIdleFunc(NULL);
     }
     glutSwapBuffers();
@@ -113,15 +114,13 @@ static void display_setup(void)
     } else {
 	psr_cxt->usr_func.setup();
 	save_current_drawing();
-	glutDisplayFunc(update_display);
+	//glutDisplayFunc(update_display);
     }
     glutSwapBuffers();
 }
 
 static void reshape(int width, int height)
 {
-    /* FIXME: it seems this function will be called twice during
-     * size().  don't know if this is normal for glut. */
     psr_debug("reshape(%d, %d)", width, height);
     psr_cxt->update_size(width, height);
     gl_reshape(width, height);
