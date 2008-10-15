@@ -96,19 +96,19 @@ int size(int lwidth, int lheight)
 
 int no_loop(void)
 {
-    psr_debug("no_loop");
+    psr_debug("no_loop()");
     return renderer_context.no_loop();
 }
 
 int loop(void)
 {
-    psr_debug("loop");
+    psr_debug("loop()");
     return renderer_context.loop();
 }
 
 int redraw(void)
 {
-    psr_debug("redraw");
+    psr_debug("redraw()");
     return renderer_context.redraw();
 }
 
@@ -140,7 +140,7 @@ int cursor(int type)
 
 int no_cursor(void)
 {
-    psr_debug("no_cursor");
+    psr_debug("no_cursor()");
     return renderer_context.cursor(NONE);
 }
 
@@ -197,7 +197,7 @@ int stroke(float r, float g, float b, float a)
 
 int no_stroke(void)
 {
-    psr_debug("no_stroke");
+    psr_debug("no_stroke()");
     return renderer_context.no_stroke();
 }
 
@@ -209,13 +209,13 @@ int background(float r, float g, float b, float a)
 
 int push_matrix(void)
 {
-    psr_debug("push_matrix");
+    psr_debug("push_matrix()");
     return renderer_context.push_matrix();
 }
 
 int pop_matrix(void)
 {
-    psr_debug("pop_matrix");
+    psr_debug("pop_matrix()");
     return renderer_context.pop_matrix();
 }
 
@@ -235,13 +235,13 @@ int apply_matrix(float n11, float n12, float n13, float n14,
 
 int reset_matrix(void)
 {
-    psr_debug("reset_matrix");
+    psr_debug("reset_matrix()");
     return renderer_context.reset_matrix();
 }
 
 int print_matrix(void)
 {
-    psr_debug("print_matrix");
+    psr_debug("print_matrix()");
     return renderer_context.print_matrix();
 }
 
@@ -469,6 +469,8 @@ int bezier(float x1, float y1, float z1,
 	   float cx2, float cy2, float cz2,
 	   float x2, float y2, float z2)
 {
+    psr_debug("bezier(%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f)",
+	      x1, y1, z1, cx1, cy1, cz1, cx2, cy2, cz2, x2, y2, z2);
     begin_shape(POLYGON);
     vertex(x1, y1, z1, 0, 0);
     bezier_vertex(cx1, cy1, cz1, cx2, cy2, cz2, x2, y2, z2);
@@ -502,13 +504,13 @@ int stroke_weight(float width)
 
 int smooth(void)
 {
-    psr_debug("smooth");
+    psr_debug("smooth()");
     return renderer_context.smooth();
 }
 
 int no_smooth(void)
 {
-    psr_debug("no_smooth");
+    psr_debug("no_smooth()");
     return renderer_context.no_smooth();
 }
 
@@ -520,7 +522,7 @@ int fill(float r, float g, float b, float a)
 
 int no_fill(void)
 {
-    psr_debug("no_fill");
+    psr_debug("no_fill()");
     return renderer_context.no_fill();
 }
 
@@ -536,9 +538,50 @@ int image(struct psr_image *img, float x, float y, float width, float height)
     return renderer_context.image(img, x, y, width, height);
 }
 
+int camera_default(void)
+{
+    psr_debug("camera_default()");
+    return renderer_context.camera_default();
+}
+
+int camera(float eye_x, float eye_y, float eye_z,
+	   float center_x, float center_y, float center_z,
+	   float up_x, float up_y, float up_z)
+{
+    psr_debug("camera(%f %f %f %f %f %f %f %f %f)",
+	      eye_x, eye_y, eye_z,
+	      center_x, center_y, center_z,
+	      up_x, up_y, up_z);
+    return renderer_context.camera(
+	eye_x, eye_y, eye_z,
+	center_x, center_y, center_z,
+	up_x, up_y, up_z);
+}
+
+int begin_camera(void)
+{
+    psr_debug("begin_camera()");
+    return renderer_context.begin_camera();
+}
+
+int end_camera(void)
+{
+    psr_debug("end_camera()");
+    return renderer_context.end_camera();
+}
+
+int ortho(float left, float right, float bottom, float top,
+	  float near, float far)
+{
+    psr_debug("ortho(%f, %f, %f, %f, %f, %f)",
+	      left, right, bottom, top, near, far);
+    return renderer_context.ortho(left, right, bottom, top, near, far);
+}
+
 /* default setup */
 static void default_setup(void)
 {
+    psr_debug("default_setup()");
     //size(100, 100);
     frame_rate(60);
     rect_mode(CORNER);
@@ -548,6 +591,7 @@ static void default_setup(void)
     stroke(0, 0, 0, 1);
     fill(1, 1, 1, 1);
     background(0.8, 0.8, 0.8, 1);
+    psr_debug("end of default_setup()");
 }
 
 int processor_init(void)

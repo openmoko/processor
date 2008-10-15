@@ -54,7 +54,7 @@ static inline void save_current_drawing(void)
 
 static void display_draw(void)
 {
-    psr_debug("display_draw");
+    psr_debug("display_draw()");
     psr_cxt->usr_func.draw();
     save_current_drawing();
     if (looping) {
@@ -73,7 +73,7 @@ static void display_setup(void)
 {
     /* we call setup() just once.  we 'record' it, replay it if
      * necessary */
-    psr_debug("display_setup");
+    psr_debug("display_setup()");
     psr_cxt->default_setup();
     if (psr_cxt->usr_func.draw) {
 	psr_cxt->usr_func.setup();
@@ -169,7 +169,7 @@ static void visible(int vis)
 static void keyboard(unsigned char key, int x, int y)
 {
     int keycode = NONE;		/* NONE means we don't update keycode */
-    psr_debug("keyboard");
+    psr_debug("keyboard(%c, %d, %d)", key, x, y);
     switch (key) {
     case BACKSPACE:
     case TAB:
@@ -188,7 +188,7 @@ static void keyboard(unsigned char key, int x, int y)
 /* NOTE: Does NOT support ALT, CONTROL and SHIFT */
 static void special(int key, int x, int y)
 {
-    psr_debug("special");
+    psr_debug("special(%d, %d, %d)", key, x, y);
     switch (key) {
     case GLUT_KEY_UP:
 	psr_cxt->update_key(CODED, UP);

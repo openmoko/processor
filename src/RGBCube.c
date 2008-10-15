@@ -7,10 +7,20 @@ static float newXmag = 0, newYmag = 0;
 
 static void setup(void)
 {
-    size(200, 200);
-    no_stroke();
-    //no_fill();
-    smooth();
+    //size(200, 200);
+    //no_stroke();
+    no_fill();
+
+    push_matrix();
+    begin_camera();
+    translate(10, 10, 0);
+    //rotate_x(-PI/6);
+    end_camera();
+
+    translate(50, 50, 0);
+    rotate_y(PI/3);
+    box(45, 45, 45);
+    pop_matrix();
     return;
 }
 
@@ -125,7 +135,7 @@ int main(int argc, char *argv[])
 	.key_released = NULL,
 	.key_pressed = NULL,
 	.setup = setup,
-	.draw = draw3d,
+	.draw = NULL,
     };
     processor_init();
     processor_run(&my_func);

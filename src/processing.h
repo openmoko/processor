@@ -76,7 +76,14 @@ extern int fill(float r, float g, float b, float a);
 extern int no_fill(void);
 extern int save(struct psr_image *img);
 extern int image(struct psr_image *img, float x, float y, float width, float height);
-
+extern int camera_default(void);
+extern int camera(float eye_x, float eye_y, float eye_z,
+		  float center_x, float center_y, float center_z,
+		  float up_x, float up_y, float up_z);
+extern int begin_camera(void);
+extern int end_camera(void);
+extern int ortho(float left, float right, float bottom, float top,
+		 float near, float far);
 extern int processor_init(void);
 extern int processor_run(struct psr_usr_func *usr_func);
 

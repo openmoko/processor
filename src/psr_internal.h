@@ -98,6 +98,14 @@ struct psr_renderer_context {
     int (*save) (struct psr_image *img);
     int (*image) (struct psr_image *img, float x, float y,
 		  float width, float height);
+    int (*camera_default) (void);
+    int (*camera) (float eye_x, float eye_y, float eye_z,
+		   float center_x, float center_y, float center_z,
+		   float up_x, float up_y, float up_z);
+    int (*begin_camera) (void);
+    int (*end_camera) (void);
+    int (*ortho) (float left, float right, float bottom, float top,
+		  float near, float far);
 };
 
 #define DEFAULT_WIDTH (100)

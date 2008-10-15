@@ -39,6 +39,7 @@ static int dont_fill = 0, dont_stroke = 0;
 static GLuint recorded_list = 0;
 static GLfloat saved_modelview[16];
 static int g_width, g_height;
+static GLdouble g_depth;
 
 #define glCheckError()					\
     ({							\
@@ -559,6 +560,65 @@ static int image(struct psr_image *img, float x, float y, float width,
 
 
 /******************************************************************** 
+ * Lights and camera functions
+ ********************************************************************/
+
+static int camera_default(void)
+{
+    glLoadIdentity();
+    /* flip y-axis to match with the processing coordinate */
+    glScalef(1, -1, 1);
+    /* adjust the window to the correct position because the camera
+     * sits at the origin.  tricky. */
+    glTranslatef(-g_width/2, -g_height/2, -g_depth);
+    return glCheckError();
+}
+
+static int camera(float eye_x, float eye_y, float eye_z,
+		  float center_x, float center_y, float center_z,
+		  float up_x, float up_y, float up_z)
+{
+    glLoadIdentity();
+    gluLookAt(eye_x, -eye_y, eye_z,
+	      center_x, -center_y, center_z,
+	      up_x, up_y, up_z);
+    glScalef(1, -1, 1);
+    return glCheckError();
+}
+
+static int begin_camera(void)
+{
+    print_matrix();
+    /* save the current modelview matrix */
+    glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *) saved_modelview);
+    glLoadIdentity();
+    /* operation to the camera should be reverted to applied to the
+     * model view. */
+    glScalef(-1, 1, -1);
+    return glCheckError();
+}
+
+static int end_camera(void)
+{
+    print_matrix();
+    glScalef(-1, 1, -1);
+    glMultMatrixf((GLfloat *) saved_modelview);
+    print_matrix();
+    return glCheckError();
+}
+
+static int ortho(float left, float right, float bottom, float top,
+		 float near, float far)
+{
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(left, right, -bottom, -top, near, far);
+    glMatrixMode(GL_MODELVIEW);
+    return glCheckError();
+}
+
+
+/******************************************************************** 
  * Other functions
  ********************************************************************/
 
@@ -618,6 +678,11 @@ int gl_init(struct psr_context *lpsr_cxt,
     renderer_cxt->apply_matrix = apply_matrix;
     renderer_cxt->reset_matrix = reset_matrix;
     renderer_cxt->print_matrix = print_matrix;
+    renderer_cxt->camera_default = camera_default;
+    renderer_cxt->camera = camera;
+    renderer_cxt->begin_camera = begin_camera;
+    renderer_cxt->end_camera = end_camera;
+    renderer_cxt->ortho = ortho;
 
     return r;
 }
@@ -645,21 +710,16 @@ int gl_reshape(int width, int height)
 
     g_width = width;
     g_height = height;
+    g_depth = z;
 
     glViewport(0, 0, width, height);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(fov, aspect, z_near, z_far);
-    //glOrtho(-width/2, width/2, -height/2, height/2, -1000, 1000);
 
     glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    /* flip y-axis to match with the processing coordinate */
-    glScalef(1, -1, 1);
-    /* adjust the window to the correct position because the camera
-     * sits at the origin.  tricky. */
-    glTranslatef(-width/2, -height/2, -z);
+    camera_default();
 
     return glCheckError();
 }
