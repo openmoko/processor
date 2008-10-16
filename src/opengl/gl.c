@@ -588,22 +588,25 @@ static int camera(float eye_x, float eye_y, float eye_z,
 
 static int begin_camera(void)
 {
-    print_matrix();
     /* save the current modelview matrix */
     glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *) saved_modelview);
     glLoadIdentity();
     /* operation to the camera should be reverted to applied to the
      * model view. */
-    glScalef(-1, 1, -1);
+    glScalef(-1, -1, -1);
     return glCheckError();
 }
 
 static int end_camera(void)
 {
-    print_matrix();
-    glScalef(-1, 1, -1);
+    GLfloat camera_view[16];
+    /* invert y offset */
+    glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *) camera_view);
+    camera_view[13] = -camera_view[13];
+    glLoadMatrixf((GLfloat *) camera_view);
+    /* revert it again to go back to the original scale */
+    glScalef(-1, -1, -1);
     glMultMatrixf((GLfloat *) saved_modelview);
-    print_matrix();
     return glCheckError();
 }
 

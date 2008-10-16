@@ -13,8 +13,8 @@ static void setup(void)
 
     push_matrix();
     begin_camera();
-    translate(10, 10, 0);
-    //rotate_x(-PI/6);
+    //translate(10, 10, 0);
+    rotate_x(-PI/6);
     end_camera();
 
     translate(50, 50, 0);
