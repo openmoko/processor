@@ -470,10 +470,10 @@ static int apply_matrix(float n11, float n12, float n13, float n14,
 			float n31, float n32, float n33, float n34,
 			float n41, float n42, float n43, float n44)
 {
-    GLfloat matrix[] = {n11, n12, n13, n14,
-			n21, n22, n23, n24,
-			n31, n32, n33, n34,
-			n41, n42, n43, n44};
+    GLfloat matrix[] = {n11, n21, n31, n41,
+			n12, n22, n32, n42,
+			n13, n23, n33, n43,
+			n14, n24, n34, n44};
 
     glMultMatrixf((GLfloat *) matrix);
     return glCheckError();
@@ -482,6 +482,7 @@ static int apply_matrix(float n11, float n12, float n13, float n14,
 static int reset_matrix(void)
 {
     glLoadIdentity();
+    glScalef(1, -1, 1);
     return glCheckError();
 }
 
